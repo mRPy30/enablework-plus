@@ -1,7 +1,8 @@
 # EnableWork+ local backend
 
-Seven application tables, two roles, five ordered SQL migrations, private resume Storage and a non-AI resume validation function. Employers are company records only. No hosted project is linked or modified.
+Seven application tables, two roles, six ordered SQL migrations, private resume Storage and a non-AI resume validation function. Employers are company records only. No hosted project is linked or modified.
 
+- [Phase 2 changes and validation](../docs/phase-2-implementation.md)
 - [Local setup and tests](../docs/phase-1-local-setup.md)
 - [Schema and ERD](../docs/database/phase-1-schema.md)
 - [Security matrix](../docs/database/security-matrix.md)

@@ -1,0 +1,45 @@
+<svg width="600" height="480" viewBox="0 0 600 480" xmlns="http://www.w3.org/2000/svg">
+    <defs/>
+    <g>
+        <path fill="#ffffff" stroke="#0038a8" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" d="M 331 328 C 331 385.98993 283.9899 433 226 433 C 168.0101 433 121 385.98993 121 328 C 121 270.0101 168.0101 223 226 223 C 283.9899 223 331 270.0101 331 328 Z"/>
+        <g>
+            <path fill="#0038a8" stroke="none" d="M 178 305 L 274 305 C 280.6274 305 286 310.3726 286 317 L 286 368 C 286 374.6274 280.6274 380 274 380 L 178 380 C 171.37259 380 166 374.6274 166 368 L 166 317 C 166 310.3726 171.37259 305 178 305 Z"/>
+            <path fill="none" stroke="#0038a8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="M 203 306 L 203 289 Q 203 281 212 281 L 240 281 Q 249 281 249 289 L 249 306"/>
+        </g>
+        <path fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M 167 331 Q 226 350 285 331"/>
+        <path fill="#ffffff" stroke="none" d="M 222 333 L 230 333 C 231.65686 333 233 334.34314 233 336 L 233 347 C 233 348.65683 231.65686 350 230 350 L 222 350 C 220.34314 350 219 348.65683 219 347 L 219 336 C 219 334.34314 220.34314 333 222 333 Z"/>
+        <path fill="#0038a8" stroke="none" d="M 324 89 C 324 105.56854 310.56854 119 294 119 C 277.43146 119 264 105.56854 264 89 C 264 72.43146 277.43146 59 294 59 C 310.56854 59 324 72.43146 324 89 Z"/>
+        <path fill="none" stroke="#0038a8" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" d="M 283 146 Q 273 141 265 157 L 232 221 Q 224 239 241 248 L 310 259"/>
+        <path fill="none" stroke="#ce1126" stroke-width="19" stroke-linecap="round" stroke-linejoin="round" d="M 289 159 L 342 190 Q 351 195 359 186 L 383 158"/>
+        <path fill="none" stroke="#ce1126" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" d="M 294 250 L 353 264 Q 364 267 369 279 L 401 355 L 451 355"/>
+        <path fill="none" stroke="#0038a8" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" d="M 333 313 L 363 369"/>
+        <g>
+            <path fill="#fcd116" stroke="none" d="M 469 91 C 469 102.04569 460.0457 111 449 111 C 437.9543 111 429 102.04569 429 91 C 429 79.95431 437.9543 71 449 71 C 460.0457 71 469 79.95431 469 91 Z"/>
+            <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            <g transform="matrix(0.7071068 0.7071068 -0.7071068 0.7071068 195.85577 -290.83768)">
+                <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            </g>
+            <g transform="matrix(0 1 -1 0 540 -358)">
+                <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            </g>
+            <g transform="matrix(-0.7071068 0.7071068 -0.7071068 -0.7071068 830.83765 -162.14423)">
+                <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            </g>
+            <g transform="matrix(-1 0 -0 -1 898 182)">
+                <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            </g>
+            <g transform="matrix(-0.7071068 -0.7071068 0.7071068 -0.7071068 702.1443 472.8377)">
+                <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            </g>
+            <g transform="matrix(-0 -1 1 -0 358 540)">
+                <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            </g>
+            <g transform="matrix(0.7071068 -0.7071068 0.7071068 0.7071068 67.16234 344.14423)">
+                <path fill="#fcd116" stroke="none" d="M 441 67 L 440 52 L 444 55 L 449 44 L 454 55 L 458 52 L 457 67 Z"/>
+            </g>
+            <path fill="#fcd116" stroke="none" d="M 390 37 L 392.35004 43.76 L 399.51 43.91 L 393.80002 48.24 L 395.88 55.09 L 390 51 L 384.12003 55.09 L 386.2 48.24 L 380.48996 43.91 L 387.65 43.76 Z"/>
+            <path fill="#fcd116" stroke="none" d="M 504 53 L 506.35 59.76 L 513.51 59.91 L 507.8 64.24 L 509.88 71.09 L 504 67 L 498.12 71.09 L 500.2 64.24 L 494.49002 59.91 L 501.65 59.76 Z"/>
+            <path fill="#fcd116" stroke="none" d="M 483 140 L 485.34998 146.76 L 492.51 146.91 L 486.8 151.24 L 488.88 158.09 L 483 154 L 477.11996 158.09 L 479.2 151.24 L 473.49 146.91 L 480.65 146.76 Z"/>
+        </g>
+    </g>
+</svg>

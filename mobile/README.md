@@ -1,3 +1,9 @@
-# EnableWork+ Android job-seeker app
+# EnableWork+ Android application
 
-Local Phase 1 authentication foundation only. See [local setup](../docs/phase-1-local-setup.md) and [security matrix](../docs/database/security-matrix.md). Full product screens and all AI integration remain deferred.
+PWD Job Seeker registration/login/recovery plus a protected Phase 2 dashboard, profile editor, PDF resume lifecycle and accessibility preferences.
+
+- [Phase 2 runbook and results](../docs/phase-2-implementation.md)
+- [Local Supabase setup](../docs/phase-1-local-setup.md)
+- [Authorization matrix](../docs/database/security-matrix.md)
+
+Authentication and Phase 1 RLS remain mandatory. No employer login, AI integration, real PWD seed data or production deployment exists. UI preview exports are synthetic widget-test captures, not an unprotected application route.

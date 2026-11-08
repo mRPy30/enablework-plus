@@ -6,6 +6,7 @@ class AuthService {
   AuthService(this.client, this.redirectUrl);
   final SupabaseClient client;
   final String redirectUrl;
+  String? get userId => client.auth.currentUser?.id;
   bool get hasSession => client.auth.currentSession != null;
   Stream<AuthState> get authChanges => client.auth.onAuthStateChange;
   static const expectedRole = AppRole.jobSeeker;

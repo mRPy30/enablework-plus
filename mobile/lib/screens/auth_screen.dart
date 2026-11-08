@@ -4,11 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
+import '../widgets/workspace_widgets.dart';
+import '../widgets/brand_identity.dart';
 
-/// Authentication foundation only; job, profile and administrative feature screens are deferred.
+/// Auth gate for the protected job-seeker workspace.
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({required this.service, super.key});
+  const AuthScreen({
+    required this.service,
+    this.authenticatedBuilder,
+    super.key,
+  });
   final AuthService service;
+  final Widget Function(BuildContext, VoidCallback)? authenticatedBuilder;
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
@@ -105,9 +112,23 @@ class _AuthScreenState extends State<AuthScreen> {
     future: _access,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
-        return const Center(child: CircularProgressIndicator());
+        return const Center(
+          child: BusyIndicator(label: 'Checking account access'),
+        );
       }
       final authenticated = snapshot.data ?? false;
+      if (authenticated &&
+          !_recovering &&
+          widget.authenticatedBuilder != null) {
+        return widget.authenticatedBuilder!(context, () {
+          if (mounted) {
+            setState(() {
+              _access = Future.value(false);
+              _message = 'Your account access changed. Please sign in again.';
+            });
+          }
+        });
+      }
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -116,6 +137,8 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const BrandIdentity(),
+                const SizedBox(height: 24),
                 if (authenticated && !_recovering) ...[
                   const Text(
                     'Authentication verified. Feature screens follow in later phases.',

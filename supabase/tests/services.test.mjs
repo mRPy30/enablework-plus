@@ -31,6 +31,24 @@ try {
     const result=await request(`/rest/v1/profiles?id=eq.${b.id}`,{token:a.token});
     assert.equal(result.ok,true); assert.deepEqual(result.data,[]);
   });
+  await test('Phase 2 joined profile read and transactional save use only the caller',async()=>{
+    const before=await request('/rest/v1/rpc/my_job_seeker_profile',{method:'POST',token:a.token,body:{}});
+    assert.equal(before.ok,true);assert.equal(before.data.profile.id,a.id);
+    const saved=await request('/rest/v1/rpc/save_my_job_seeker_profile',{method:'POST',token:a.token,
+      body:{p_profile:{full_name:'Dummy Phase Two',phone:null},p_details:{headline:'Dummy testing',skills:['Testing']},p_expected_updated_at:before.data.profile.updated_at}});
+    assert.equal(saved.ok,true);
+    const stale=await request('/rest/v1/rpc/save_my_job_seeker_profile',{method:'POST',token:a.token,
+      body:{p_profile:{full_name:'Stale dummy'},p_details:{},p_expected_updated_at:before.data.profile.updated_at}});
+    assert.equal(stale.ok,false);
+  });
+  await test('Phase 2 preference updates cannot modify another seeker',async()=>{
+    const forbidden=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}`,{method:'PATCH',token:a.token,
+      headers:{Prefer:'return=representation'},body:{high_contrast:true}});
+    assert.equal(forbidden.ok,true);assert.deepEqual(forbidden.data,[]);
+    const own=await request(`/rest/v1/accessibility_preferences?user_id=eq.${a.id}`,{method:'PATCH',token:a.token,
+      headers:{Prefer:'return=representation'},body:{high_contrast:true,text_scale:1.5,reduce_motion:true}});
+    assert.equal(own.ok,true);assert.equal(own.data[0].high_contrast,true);
+  });
   await test('REST role escalation denied',async()=>{
     assert.equal((await request(`/rest/v1/profiles?id=eq.${a.id}`,{method:'PATCH',token:a.token,body:{role:'system_administrator'}})).ok,false);
   });
@@ -57,6 +75,11 @@ try {
     const responses=await Promise.all([1,2].map(()=>request('/rest/v1/rpc/submit_application',{method:'POST',token:a.token,
       body:{p_job_id:context.jobs[0].id,p_resume_id:resume.id}})));
     assert.equal(responses.filter(x=>x.ok).length,1);
+  });
+  await test('Phase 2 dashboard aggregates are scoped to the signed-in seeker',async()=>{
+    const mine=await request('/rest/v1/rpc/my_application_counts',{method:'POST',token:a.token,body:{}});
+    const theirs=await request('/rest/v1/rpc/my_application_counts',{method:'POST',token:b.token,body:{}});
+    assert.equal(mine.ok,true);assert.equal(Number(mine.data[0].total),1);assert.deepEqual(theirs.data,[]);
   });
   await test('administrator can read application-attached resume',async()=>{
     assert.equal((await request(`/storage/v1/object/authenticated/resumes/${path}`,{token:admin.token})).ok,true);

@@ -14,6 +14,8 @@ class SignedOutAuthService implements AuthService {
   @override
   bool get hasSession => false;
   @override
+  String? get userId => null;
+  @override
   Stream<AuthState> get authChanges => const Stream.empty();
   @override
   Future<AccountProfile> requireAccess() async =>

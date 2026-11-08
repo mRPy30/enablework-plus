@@ -257,5 +257,53 @@ try {
       }
     }
   });
+
+  const ownProfile=await asUser(seeker,()=>one('select public.my_job_seeker_profile() value'));
+  const version=ownProfile.value.profile.updated_at;
+  await test('workspace profile read contains only the caller',async()=>{
+    assert.equal(ownProfile.value.profile.id,seeker);assert.equal(ownProfile.value.details.user_id,seeker);
+    assert.equal((await asUser(other,()=>one('select public.my_job_seeker_profile() value'))).value.profile.id,other);
+  });
+  await test('administrator cannot use seeker workspace RPC',()=>denied(admin,'select public.my_job_seeker_profile()'));
+  await test('anonymous cannot use workspace RPC',()=>denied(null,'select public.my_job_seeker_profile()',[],'42501','anon'));
+  await test('atomic profile save rejects role injection',()=>denied(seeker,
+    'select public.save_my_job_seeker_profile($1,$2,$3)',[{full_name:'Dummy',role:'system_administrator'},{},version],'23514'));
+  await test('atomic profile save rejects foreign owner selectors',()=>denied(seeker,
+    'select public.save_my_job_seeker_profile($1,$2,$3)',[{full_name:'Dummy'},{user_id:other},version],'23514'));
+  await test('invalid detail rolls back identity edit',async()=>{
+    await denied(seeker,'select public.save_my_job_seeker_profile($1,$2,$3)',
+      [{full_name:'Should not persist'},{headline:'x'.repeat(181)},version],'23514');
+    assert.equal((await one('select full_name from public.profiles where id=$1',[seeker])).full_name,ownProfile.value.profile.full_name);
+  });
+  await test('text-list validation rejects non-string elements',()=>denied(seeker,
+    'select public.save_my_job_seeker_profile($1,$2,$3)',[{full_name:'Dummy'},{skills:[123]},version],'23514'));
+  await test('text-list validation rejects oversized elements',()=>denied(seeker,
+    'select public.save_my_job_seeker_profile($1,$2,$3)',[{full_name:'Dummy'},{skills:['x'.repeat(121)]},version],'23514'));
+  await test('blank name rejected',()=>denied(seeker,
+    'select public.save_my_job_seeker_profile($1,$2,$3)',[{full_name:'  '},{},version],'23514'));
+  await test('valid atomic own-profile save persists both tables',async()=>{
+    await asUser(seeker,()=>db.query('select public.save_my_job_seeker_profile($1,$2,$3)',
+      [{full_name:'Dummy Phase Two',phone:null},{headline:'Dummy skill profile',skills:['Testing'],preferred_job_types:['part_time']},version]));
+    assert.equal((await one('select full_name from public.profiles where id=$1',[seeker])).full_name,'Dummy Phase Two');
+    assert.equal((await one('select headline from public.job_seeker_profiles where user_id=$1',[seeker])).headline,'Dummy skill profile');
+  });
+  await test('stale profile version cannot overwrite a later save',()=>denied(seeker,
+    'select public.save_my_job_seeker_profile($1,$2,$3)',[{full_name:'Stale edit'},{},version],'40001'));
+  await test('own-application counts are exact and isolated',async()=>{
+    const counts=await asUser(seeker,()=>db.query('select * from public.my_application_counts()'));
+    assert.equal(Number(counts.rows.find(x=>x.status==='hired').total),1);
+    assert.deepEqual((await asUser(other,()=>db.query('select * from public.my_application_counts()'))).rows,[]);
+  });
+  await test('administrator cannot use own-seeker count endpoint',()=>denied(admin,'select * from public.my_application_counts()'));
+  await asUser(admin,()=>db.query('select public.set_job_seeker_status($1,$2)',[seeker,'suspended']));
+  await test('suspended account denied new workspace endpoints',async()=>{
+    await denied(seeker,'select public.my_job_seeker_profile()');await denied(seeker,'select * from public.my_application_counts()');
+  });
+  await asUser(admin,()=>db.query('select public.set_job_seeker_status($1,$2)',[seeker,'active']));
+  await test('new workspace endpoints are invoker functions',async()=>{
+    const rows=await db.query("select prosecdef from pg_proc where proname in ('my_job_seeker_profile','save_my_job_seeker_profile','my_application_counts') and pronamespace='public'::regnamespace");
+    assert.equal(rows.rows.length,3);assert.ok(rows.rows.every(x=>!x.prosecdef));
+  });
+
   console.log(`RESULT: ${passed} database/security checks passed. Managed Auth/Storage are test doubles; no HTTP service or concurrency validation claimed.`);
 } finally { await db.close(); }

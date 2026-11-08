@@ -88,3 +88,8 @@ See [Phase 0 status](docs/phase-0.md) and [local push instructions](docs/git-wor
 Phase 0 is accepted as complete by the owner. The Phase 1 implementation is local-only and awaits review/runtime validation. See [local setup](docs/phase-1-local-setup.md), [schema and ERD](docs/database/phase-1-schema.md), [security matrix](docs/database/security-matrix.md), and [results](docs/phase-1-results.md).
 
 mobile/ provides job-seeker signup/login/recovery and platform-protected session persistence. admin/ provides administrator login/recovery with memory-only sessions and no registration action. RLS, protected database roles and restricted operations enforce authorization. Neither app can enable a hosted backend in this local milestone. OpenAI remains deferred.
+
+
+## Phase 2 local implementation
+
+The protected Android workspace now includes profile editing, resume upload/version lifecycle, accessibility preferences and a personal dashboard. See [Phase 2 implementation and validation](docs/phase-2-implementation.md). Migration 006 adds atomic self-profile editing and own-application counts without changing roles or RLS policies. Live local service/device QA remains pending; no hosted deployment is implied.
