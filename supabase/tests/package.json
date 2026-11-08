@@ -1,0 +1,19 @@
+{
+  "name": "enablework-local-security-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node database.test.mjs",
+    "test:services": "node services.test.mjs",
+    "seed:local": "node seed-local.mjs",
+    "test:edge": "node edge-function.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
+    "pg": "8.23.0",
+    "supabase": "3.0.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

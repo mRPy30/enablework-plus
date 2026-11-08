@@ -1,40 +1,60 @@
 # Local Git and remote publishing
 
-The owner verified mRPy30/enablework-plus as private and empty from authenticated Windows PowerShell. The scaffold does not independently access or modify GitHub.
-
-After reviewing the local milestone, run in Windows PowerShell:
+Run from Windows PowerShell. The initial scaffold commit is 60f1140; preserve it. The owner approved a separate correction commit and normal push. Never recreate the repository, force-push, amend existing history or delete branches for this setup.
 
 ```powershell
 Set-Location 'C:\Users\Janvier\enablework-plus'
 git status --short --branch
+git branch --show-current
 git remote -v
-git log -1 --oneline
-git ls-remote origin
+git log -2 --oneline
 ```
 
-The origin must be https://github.com/mRPy30/enablework-plus.git. If ls-remote fails, stop. If any remote refs appear, stop and inspect them before pushing; do not force-push. If origin is absent, add it with:
+The origin must be https://github.com/mRPy30/enablework-plus.git. Stop if it differs. Review exactly the intended paths before staging; do not add local config or generated output.
 
 ```powershell
-git remote add origin https://github.com/mRPy30/enablework-plus.git
-```
-
-If no initial local commit exists, review and create it:
-
-```powershell
-git add .
+git diff
+git diff --check
+# Stage only the reviewed setup corrections:
+git add -- .gitignore .vscode/extensions.json README.md docs/phase-0.md docs/supabase-setup.md docs/git-workflow.md
 git diff --cached --name-status
+git diff --cached --check
 git diff --cached
-# Continue only after reviewing all staged content.
-git commit -m "Initial commit: EnableWork+ project setup"
 ```
 
-After explicit approval to publish and a successful empty-remote check:
+If the correction commit does not yet exist, create it only after checks pass:
 
 ```powershell
-git push -u origin main
+git commit -m "chore: finalize Phase 0 project setup"
+```
+
+Fetch and check existing remote history without overwriting it. Run each step only if the preceding command succeeds:
+
+```powershell
+git fetch origin
+if ($LASTEXITCODE -ne 0) { throw 'Fetch failed. Stop before publishing or verification.' }
+$branch = git branch --show-current
+if ([string]::IsNullOrWhiteSpace($branch)) { throw 'A named branch is required.' }
+git show-ref --verify --quiet "refs/remotes/origin/$branch"
+$remoteBranchExists = $LASTEXITCODE -eq 0
+if ($remoteBranchExists) {
+    git merge-base --is-ancestor "origin/$branch" HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Remote history is not an ancestor. Stop and review divergence.' }
+}
+git push --set-upstream origin $branch
+if ($LASTEXITCODE -ne 0) { throw 'Push failed. Do not report publication as successful.' }
+```
+
+A normal push will reject a concurrent non-fast-forward update. Do not force it; inspect remote work instead. After a successful push:
+
+```powershell
 git rev-parse HEAD
-git ls-remote origin refs/heads/main
+git ls-remote origin "refs/heads/$branch"
+git fetch origin
+if ($LASTEXITCODE -ne 0) { throw 'Fetch failed. Stop before publishing or verification.' }
+git merge-base --is-ancestor 60f1140 "origin/$branch"
+git log -2 --oneline "origin/$branch"
 & 'C:\Program Files\GitHub CLI\gh.exe' repo view mRPy30/enablework-plus --json nameWithOwner,isPrivate,url
 ```
 
-The local and remote main hashes must match. Confirm isPrivate is true. Never share credentials in chat. Do not create another repository or rerun git init over this checkout.
+The published branch hash must match local HEAD and contain both scaffold and correction commits. isPrivate must be true. GitHub authentication is managed on the owner's Windows machine; never share credentials in chat. Authentication failure must be reported without changing login state or placing credentials in source/configuration.

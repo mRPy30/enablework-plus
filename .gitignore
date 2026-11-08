@@ -23,6 +23,18 @@ key.properties
 **/service-account*.json
 **/supabase/.temp/
 **/supabase/.branches/
+# Local-only client and Supabase overrides (keep config.toml and migrations)
+/config/local/
+/supabase/config.local.toml
+/supabase/config.local.json
+*.tmp
+*.temp
+*.bak
+*~
+# Ignore personal VS Code files; share only extension recommendations
+**/.vscode/*
+!**/.vscode/extensions.json
+*.code-workspace
 # Editors, web tools and OS output
 **/.idea/
 *.iml
@@ -32,3 +44,6 @@ key.properties
 **/.DS_Store
 Thumbs.db
 *.log
+
+# Supabase CLI checkout-local runtime/link cache (not authored configuration)
+/.supabase/

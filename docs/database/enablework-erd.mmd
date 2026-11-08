@@ -1,0 +1,56 @@
+erDiagram
+    AUTH_USERS ||--|| PROFILES : identifies
+    PROFILES ||--o| JOB_SEEKER_PROFILES : extends
+    JOB_SEEKER_PROFILES ||--|| ACCESSIBILITY_PREFERENCES : configures
+    JOB_SEEKER_PROFILES ||--o{ RESUMES : owns
+    EMPLOYERS ||--o{ JOBS : offers
+    JOBS ||--o{ APPLICATIONS : receives
+    JOB_SEEKER_PROFILES ||--o{ APPLICATIONS : submits
+    RESUMES ||--o{ APPLICATIONS : attaches
+    PROFILES ||--o{ EMPLOYERS : audits
+    PROFILES ||--o{ JOBS : audits
+    PROFILES {
+        uuid id PK,FK
+        app_role role
+        account_status account_status
+        text full_name
+    }
+    JOB_SEEKER_PROFILES {
+        uuid user_id PK,FK
+        text headline
+        text_array skills
+        text accommodation_needs
+    }
+    ACCESSIBILITY_PREFERENCES {
+        uuid user_id PK,FK
+        numeric text_scale
+        boolean high_contrast
+        boolean reduce_motion
+    }
+    EMPLOYERS {
+        uuid id PK
+        text company_name
+        boolean is_active
+        uuid created_by FK
+    }
+    JOBS {
+        uuid id PK
+        uuid employer_id FK
+        text title
+        job_status status
+        timestamptz application_deadline
+    }
+    RESUMES {
+        uuid id PK
+        uuid job_seeker_id FK
+        text storage_path UK
+        resume_upload_status upload_status
+        boolean is_current
+    }
+    APPLICATIONS {
+        uuid id PK
+        uuid job_id FK
+        uuid job_seeker_id FK
+        uuid resume_id FK
+        application_status status
+    }

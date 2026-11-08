@@ -1,0 +1,5 @@
+{
+  "SUPABASE_URL": "http://10.0.2.2:54321",
+  "SUPABASE_PUBLISHABLE_KEY": "YOUR_LOCAL_PUBLIC_PUBLISHABLE_KEY",
+  "AUTH_REDIRECT_URL": "com.enableworkplus.app://auth/callback"
+}

@@ -1,6 +1,6 @@
 # Phase 0 implementation and validation
 
-Date: November 8, 2026. Status: local scaffold prepared; Phase 0 is not yet complete.
+Date: November 8, 2026. Phase 0 was subsequently accepted as complete by the owner. The diagnostics and pending actions below are historical records from the earlier scaffold session; consult phase-1-results.md for current local implementation results.
 
 ## Scope and approvals
 
@@ -52,7 +52,11 @@ Both apps contain only a branded setup placeholder and empty lib folders for scr
 
 Root ignore rules exclude populated .env files, generated output, local.properties, service-account files and signing keys. .env.example remains includable. Client examples contain only placeholder public configuration. No Supabase service-role key, OpenAI key or production credentials have been added. The ignore checks passed for representative secret/build paths.
 
-No initial commit was created in this scaffold step. No remote changes or push were attempted. Review the files and complete Android validation before approving the initial local milestone commit. git-workflow.md provides the exact commit/push instructions and remote emptiness guard.
+The initial local scaffold commit exists: 60f1140 (feat: initialize Phase 0 monorepo scaffold). The review found a clean working tree and a cached origin/main at that same commit; cached refs are not independent live GitHub verification. Preserve this commit and do not recreate or amend it.
+
+The owner approved a separate corrections commit named chore: finalize Phase 0 project setup and a normal push of the current branch. The correction commit is not yet created because the owner conditioned it on passing validation; the current Flutter wrapper/build checks are blocked. Remote inspection also fails because the Git credential-helper shell cannot start (Windows access denied). No authentication changes, commit or push were performed for these corrections. Once resolved, the correction commit hash and publication status must be verified from Git, not inferred from this document. No force-push or history rewrite is authorized. See git-workflow.md for safe publication and ancestry checks.
+
+Approved corrections cover local Supabase/client configuration exclusions, personal VS Code exclusions with shared extension recommendations, valid PowerShell examples, and this accurate Git status report. Validation was rerun for this milestone: direct Dart analysis and formatting pass for both apps, but the Flutter analysis wrapper crashes and the admin web build exits before completion in this session. Earlier successful web builds do not count as a successful current build check. Android build/runtime and Supabase access remain outstanding; a successful Git push alone does not make all Phase 0 requirements complete.
 
 ## Owner validation in Windows PowerShell
 
@@ -69,8 +73,9 @@ flutter analyze
 flutter build apk --debug
 # Start an Android emulator in Android Studio, or connect a test phone.
 flutter devices
-# Replace ANDROID_DEVICE_ID with the actual ID shown above:
-flutter run -d ANDROID_DEVICE_ID
+$androidDeviceId = Read-Host 'Enter the Android device ID shown above'
+if ([string]::IsNullOrWhiteSpace($androidDeviceId)) { throw 'An Android device ID is required.' }
+flutter run -d $androidDeviceId
 Set-Location ..\admin
 flutter pub get
 flutter analyze
@@ -80,4 +85,4 @@ flutter run -d chrome
 
 Expected: clean analysis, successful Android APK/web builds, setup placeholder launches on Android and Chrome. Process-local environment settings do not change machine configuration.
 
-Remaining: owner review, Android build/launch validation, hosted Supabase preparation/access verification, initial local commit, explicit approval to push, remote commit/visibility verification, and explicit approval before Phase 1. Flutter Web technology approval is already complete.
+Remaining: Android build/launch validation, hosted Supabase preparation/access verification, verification of correction commit publication and remote visibility, and explicit approval before Phase 1 implementation. The initial scaffold commit, Flutter Web technology approval, corrections approval and authorization for a normal push are already established. Phase 1 implementation has not started.
