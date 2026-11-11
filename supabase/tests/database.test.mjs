@@ -31,11 +31,28 @@ try {
   await db.exec(await readFile(new URL('./support/managed-schemas.sql', import.meta.url), 'utf8'));
   const directory = new URL('../migrations/', import.meta.url);
   const migrations = (await readdir(directory)).filter(x => x.endsWith('.sql')).sort();
+  const legacyPreferencesUser = '10000000-0000-4000-8000-000000000099';
+  let preferencePoliciesBefore;
   for (const name of migrations) {
+    if (name === '20261109000700_accessibility_preferences.sql') {
+      await db.query('insert into auth.users(id,raw_user_meta_data) values ($1,$2)',[legacyPreferencesUser,{full_name:'Dummy legacy settings'}]);
+      await db.query('update public.accessibility_preferences set text_scale=1.75,high_contrast=true,reduce_motion=true where user_id=$1',[legacyPreferencesUser]);
+      preferencePoliciesBefore = (await db.query("select policyname,qual,with_check from pg_policies where schemaname='public' and tablename='accessibility_preferences' order by policyname")).rows;
+    }
     await db.exec(await readFile(new URL(name, directory), 'utf8'));
     console.log(`APPLIED ${name}`);
   }
   console.log(`PostgreSQL: ${(await one('select version() as version')).version}`);
+  await test('007 preserves pre-migration values and supplies defaults',async()=>{
+    const row=await one('select * from public.accessibility_preferences where user_id=$1',[legacyPreferencesUser]);
+    assert.equal(Number(row.text_scale),1.75);assert.equal(row.high_contrast,true);assert.equal(row.reduce_motion,true);
+    assert.deepEqual(row.accessibility_needs,[]);assert.deepEqual(row.enabled_features,[]);assert.equal(row.preferences_reviewed,false);
+  });
+  await test('007 leaves owner-only policies unchanged',async()=>{
+    assert.deepEqual((await db.query("select policyname,qual,with_check from pg_policies where schemaname='public' and tablename='accessibility_preferences' order by policyname")).rows,preferencePoliciesBefore);
+  });
+  await db.query('delete from auth.users where id=$1',[legacyPreferencesUser]);
+
   await test('all seven application tables enable RLS', async () => {
     const row = await one("select count(*)::int n, bool_and(relrowsecurity) secure from pg_class where relnamespace='public'::regnamespace and relkind='r'");
     assert.equal(row.n, 7); assert.equal(row.secure, true);
@@ -303,6 +320,81 @@ try {
   await test('new workspace endpoints are invoker functions',async()=>{
     const rows=await db.query("select prosecdef from pg_proc where proname in ('my_job_seeker_profile','save_my_job_seeker_profile','my_application_counts') and pronamespace='public'::regnamespace");
     assert.equal(rows.rows.length,3);assert.ok(rows.rows.every(x=>!x.prosecdef));
+  });
+
+  await test('007 new account defaults infer no needs or features',async()=>{
+    const row=await asUser(other,()=>one('select * from public.accessibility_preferences where user_id=$1',[other]));
+    assert.deepEqual(row.accessibility_needs,[]);assert.deepEqual(row.enabled_features,[]);assert.equal(row.preferences_reviewed,false);
+  });
+  await test('007 owner atomically updates all preference fields',async()=>{
+    const row=await asUser(other,()=>one(`update public.accessibility_preferences set text_scale=1.25,high_contrast=true,reduce_motion=true,
+      accessibility_needs=$1,enabled_features=$2,preferences_reviewed=true where user_id=$3 returning *`,
+      [['visual','mobility','hearing','speech','intellectual','learning','psychosocial'],['step_by_step_guidance'],other]));
+    assert.equal(row.accessibility_needs.length,7);assert.deepEqual(row.enabled_features,['step_by_step_guidance']);assert.equal(row.preferences_reviewed,true);
+  });
+  await test('007 needs do not enable features',async()=>{
+    await asUser(seeker,()=>db.query("update public.accessibility_preferences set accessibility_needs='{visual}',enabled_features='{}' where user_id=$1",[seeker]));
+    assert.deepEqual((await asUser(seeker,()=>one('select enabled_features from public.accessibility_preferences where user_id=$1',[seeker]))).enabled_features,[]);
+  });
+  for(const [column,values] of [
+    ['accessibility_needs',['unknown']],['accessibility_needs',['visual','visual']],['accessibility_needs',['visual',null]],['accessibility_needs',Array(8).fill('visual')],
+    ['enabled_features',['unknown']],['enabled_features',['voice_search','voice_search']],['enabled_features',[null]]]) {
+    await test(`007 rejects invalid ${column} ${JSON.stringify(values)}`,()=>denied(other,`update public.accessibility_preferences set ${column}=$1 where user_id=$2`,[values,other],'23514'));
+  }
+  await test('007 rejects SQL null arrays and confirmation',async()=>{
+    for(const column of ['accessibility_needs','enabled_features','preferences_reviewed']) await denied(other,`update public.accessibility_preferences set ${column}=null where user_id=$1`,[other],'23502');
+  });
+  await test('007 rejects multidimensional arrays',()=>denied(other,
+    "update public.accessibility_preferences set accessibility_needs=ARRAY[['visual'],['hearing']] where user_id=$1",[other],'23514'));
+  await test('007 legacy three-column write preserves choices and reviewed state',async()=>{
+    await asUser(other,()=>db.query('update public.accessibility_preferences set text_scale=1.5,high_contrast=false,reduce_motion=false where user_id=$1',[other]));
+    const row=await asUser(other,()=>one('select * from public.accessibility_preferences where user_id=$1',[other]));
+    assert.equal(row.accessibility_needs.length,7);assert.deepEqual(row.enabled_features,['step_by_step_guidance']);assert.equal(row.preferences_reviewed,true);
+  });
+  await test('007 explicit empty arrays and unreviewed are valid',async()=>{
+    const row=await asUser(seeker,()=>one("update public.accessibility_preferences set accessibility_needs='{}',enabled_features='{}',preferences_reviewed=false where user_id=$1 returning *",[seeker]));
+    assert.deepEqual(row.accessibility_needs,[]);assert.deepEqual(row.enabled_features,[]);assert.equal(row.preferences_reviewed,false);
+  });
+  await test('007 features imply no categories',async()=>{
+    const row=await asUser(seeker,()=>one("update public.accessibility_preferences set enabled_features='{voice_guidance,text_to_speech,voice_search,simplified_language,step_by_step_guidance}' where user_id=$1 returning *",[seeker]));
+    assert.deepEqual(row.accessibility_needs,[]);assert.equal(row.enabled_features.length,5);
+  });
+  await test('007 cross-user preference changes affect no rows',async()=>{
+    assert.equal((await asUser(seeker,()=>db.query("update public.accessibility_preferences set accessibility_needs='{visual}' where user_id=$1 returning user_id",[other]))).rows.length,0);
+  });
+  await test('007 administrator cannot read or update private choices',async()=>{
+    assert.deepEqual((await asUser(admin,()=>db.query('select accessibility_needs,enabled_features from public.accessibility_preferences'))).rows,[]);
+    assert.equal((await asUser(admin,()=>db.query('update public.accessibility_preferences set preferences_reviewed=false where user_id=$1 returning user_id',[other]))).rows.length,0);
+  });
+  await test('007 anonymous preference read and write denied',async()=>{
+    await denied(null,'select accessibility_needs from public.accessibility_preferences',[],'42501','anon');
+    await denied(null,'update public.accessibility_preferences set preferences_reviewed=true',[],'42501','anon');
+  });
+  await test('007 explicit column grants protect ownership and timestamps',async()=>{
+    for(const column of ['text_scale','high_contrast','reduce_motion','accessibility_needs','enabled_features','preferences_reviewed']) {
+      assert.equal((await one("select has_column_privilege('authenticated','public.accessibility_preferences',$1,'UPDATE') allowed",[column])).allowed,true);
+    }
+    assert.equal((await one("select has_table_privilege('authenticated','public.accessibility_preferences','UPDATE') allowed")).allowed,false);
+    for(const column of ['user_id','created_at','updated_at']) {
+      assert.equal((await one("select has_column_privilege('authenticated','public.accessibility_preferences',$1,'UPDATE') allowed",[column])).allowed,false);
+      await denied(other,`update public.accessibility_preferences set ${column}=${column} where user_id=$1`,[other]);
+    }
+  });
+  await test('007 invalid full-row update is atomic',async()=>{
+    const before=await one('select text_scale,preferences_reviewed from public.accessibility_preferences where user_id=$1',[other]);
+    await denied(other,"update public.accessibility_preferences set text_scale=1.99,preferences_reviewed=false,accessibility_needs='{invalid}' where user_id=$1",[other],'23514');
+    assert.deepEqual(await one('select text_scale,preferences_reviewed from public.accessibility_preferences where user_id=$1',[other]),before);
+  });
+  await test('007 stale version cannot overwrite a newer save',async()=>{
+    const before=await asUser(other,()=>one('select updated_at::text updated_at from public.accessibility_preferences where user_id=$1',[other]));
+    assert.equal((await asUser(other,()=>db.query('update public.accessibility_preferences set text_scale=1.6 where user_id=$1 and updated_at=$2 returning user_id',[other,before.updated_at]))).rows.length,1);
+    assert.equal((await asUser(other,()=>db.query('update public.accessibility_preferences set text_scale=0.9 where user_id=$1 and updated_at=$2 returning user_id',[other,before.updated_at]))).rows.length,0);
+  });
+  await test('007 suspended owner cannot read or write new fields',async()=>{
+    await asUser(admin,()=>db.query('select public.set_job_seeker_status($1,$2)',[other,'suspended']));
+    assert.equal((await asUser(other,()=>db.query('select accessibility_needs from public.accessibility_preferences'))).rows.length,0);
+    assert.equal((await asUser(other,()=>db.query('update public.accessibility_preferences set preferences_reviewed=true where user_id=$1 returning user_id',[other]))).rows.length,0);
+    await asUser(admin,()=>db.query('select public.set_job_seeker_status($1,$2)',[other,'active']));
   });
 
   console.log(`RESULT: ${passed} database/security checks passed. Managed Auth/Storage are test doubles; no HTTP service or concurrency validation claimed.`);

@@ -111,8 +111,12 @@ class SeekerController extends ChangeNotifier {
 
   Future<bool> saveProfile(SeekerProfile value) =>
       _mutate(() => repository.saveProfile(value));
-  Future<bool> savePreferences(AccessibilityPreferences value) =>
-      _mutate(() => repository.savePreferences(value));
+  Future<bool> savePreferences(AccessibilityPreferences value) {
+    if (data == null) return Future.value(false);
+    final merged = value.mergeOnto(data!.preferences);
+    return _mutate(() => repository.savePreferences(merged));
+  }
+
   Future<bool> upload(String title, PickedPdf pdf) => _mutate(
     () => repository.upload(title, pdf, (value) {
       if (!_disposed) {

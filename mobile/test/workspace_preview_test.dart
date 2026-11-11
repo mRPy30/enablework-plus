@@ -89,7 +89,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      const names = ['dashboard', 'profile', 'resumes', 'accessibility'];
+      const names = [
+        'dashboard',
+        'jobs',
+        'applications',
+        'profile',
+        'accessibility',
+      ];
       for (var index = 0; index < names.length; index++) {
         await tester.tap(find.byType(NavigationDestination).at(index));
         await tester.pumpAndSettle();

@@ -82,3 +82,16 @@ class WorkspaceError extends StatelessWidget {
     ),
   );
 }
+
+class CareerHeading extends StatelessWidget {
+  const CareerHeading(this.title, {super.key});
+  final String title;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Semantics(
+      header: true,
+      child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
+    ),
+  );
+}

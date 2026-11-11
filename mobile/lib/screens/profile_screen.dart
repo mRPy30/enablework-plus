@@ -5,8 +5,13 @@ import '../state/seeker_controller.dart';
 import '../widgets/workspace_widgets.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({required this.controller, super.key});
+  const ProfileScreen({
+    required this.controller,
+    required this.openResumes,
+    super.key,
+  });
   final SeekerController controller;
+  final VoidCallback openResumes;
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -160,6 +165,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     child: ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: widget.openResumes,
+            icon: const Icon(Icons.folder_open),
+            label: const Text('Manage resumes'),
+          ),
+        ),
+        const SizedBox(height: 12),
         SectionCard(
           title: 'Personal details',
           children: [

@@ -161,6 +161,7 @@ void main() {
       ..value = dummyWorkspace(
         preferences: const AccessibilityPreferences(
           textScale: 1.5,
+          preferencesReviewed: true,
           highContrast: true,
           reduceMotion: true,
         ),
@@ -206,6 +207,9 @@ void main() {
       ..value = dummyWorkspace(
         preferences: const AccessibilityPreferences(
           textScale: 2,
+          accessibilityNeeds: ['visual'],
+          enabledFeatures: ['step_by_step_guidance'],
+          preferencesReviewed: true,
           highContrast: true,
         ),
       );
@@ -216,7 +220,7 @@ void main() {
           updatedAt: 'stamp',
           fields: {'full_name': 'Second Dummy'},
         ),
-        preferences: const AccessibilityPreferences(),
+        preferences: const AccessibilityPreferences(preferencesReviewed: true),
         resumes: [],
         applicationCounts: {},
       );

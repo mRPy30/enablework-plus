@@ -9,10 +9,12 @@ class ResumesScreen extends StatefulWidget {
   const ResumesScreen({
     required this.controller,
     required this.picker,
+    this.addSample,
     super.key,
   });
   final SeekerController controller;
   final PdfPicker picker;
+  final VoidCallback? addSample;
   @override
   State<ResumesScreen> createState() => _ResumesScreenState();
 }
@@ -97,41 +99,66 @@ class _ResumesScreenState extends State<ResumesScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        SectionCard(
-          title: 'Add a resume',
-          children: [
-            const Text(
-              'Choose a PDF up to 5 MiB. Each upload creates a separate version.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _title,
-              enabled: !busy,
-              maxLength: 180,
-              decoration: const InputDecoration(
-                labelText: 'Resume title',
-                border: OutlineInputBorder(),
+        if (widget.addSample != null)
+          SectionCard(
+            title: 'Demo resumes',
+            children: [
+              const Text(
+                'Use a sample document for this session. No personal file is needed.',
               ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: busy ? null : _upload,
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Choose PDF and upload'),
-            ),
-            if (_picking && !widget.controller.busy)
-              const BusyIndicator(label: 'Reading your PDF'),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Semantics(liveRegion: true, child: Text(_error!)),
+              FilledButton.tonal(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        widget.addSample!();
+                        await widget.controller.load();
+                      },
+                child: const Text('Add sample resume'),
               ),
-          ],
-        ),
+            ],
+          )
+        else
+          SectionCard(
+            title: 'Add a resume',
+            children: [
+              const Text(
+                'Choose a PDF up to 5 MiB. Each upload creates a separate version.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _title,
+                enabled: !busy,
+                maxLength: 180,
+                decoration: const InputDecoration(
+                  labelText: 'Resume title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: busy ? null : _upload,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Choose PDF and upload'),
+              ),
+              if (_picking && !widget.controller.busy)
+                const BusyIndicator(label: 'Reading your PDF'),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Semantics(liveRegion: true, child: Text(_error!)),
+                ),
+            ],
+          ),
         if (widget.controller.data!.resumes.isEmpty)
-          const SectionCard(
+          SectionCard(
             title: 'Your resumes',
-            children: [Text('No resumes yet. Upload a PDF to get started.')],
+            children: [
+              Text(
+                widget.addSample == null
+                    ? 'No resumes yet. Upload a PDF to get started.'
+                    : 'No resumes yet. Add a sample to get started.',
+              ),
+            ],
           ),
         for (final r in widget.controller.data!.resumes)
           SectionCard(

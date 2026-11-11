@@ -49,6 +49,37 @@ try {
       headers:{Prefer:'return=representation'},body:{high_contrast:true,text_scale:1.5,reduce_motion:true}});
     assert.equal(own.ok,true);assert.equal(own.data[0].high_contrast,true);
   });
+  await test('007 REST preference defaults and full owner update',async()=>{
+    const before=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}`,{token:b.token});
+    assert.equal(before.ok,true);assert.deepEqual(before.data[0].accessibility_needs,[]);
+    assert.deepEqual(before.data[0].enabled_features,[]);assert.equal(before.data[0].preferences_reviewed,false);
+    const result=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}&updated_at=eq.${encodeURIComponent(before.data[0].updated_at)}`,{
+      method:'PATCH',token:b.token,headers:{Prefer:'return=representation'},
+      body:{text_scale:1.5,high_contrast:true,reduce_motion:true,accessibility_needs:['visual','hearing'],enabled_features:['step_by_step_guidance'],preferences_reviewed:true}});
+    assert.equal(result.ok,true);assert.equal(result.data.length,1);assert.deepEqual(result.data[0].accessibility_needs,['visual','hearing']);
+    const stale=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}&updated_at=eq.${encodeURIComponent(before.data[0].updated_at)}`,{
+      method:'PATCH',token:b.token,headers:{Prefer:'return=representation'},body:{text_scale:0.8}});
+    assert.equal(stale.ok,true);assert.deepEqual(stale.data,[]);
+  });
+  await test('007 legacy REST updates preserve private selections',async()=>{
+    const result=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}`,{method:'PATCH',token:b.token,
+      headers:{Prefer:'return=representation'},body:{high_contrast:false}});
+    assert.equal(result.ok,true);assert.equal(Number(result.data[0].text_scale),1.5);
+    assert.deepEqual(result.data[0].enabled_features,['step_by_step_guidance']);assert.equal(result.data[0].preferences_reviewed,true);
+  });
+  await test('007 REST new fields reject invalid choices and ownership writes',async()=>{
+    for(const body of [{accessibility_needs:['visual','visual']},{accessibility_needs:[null]},{enabled_features:['unknown']},{user_id:a.id}]) {
+      const result=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}`,{method:'PATCH',token:b.token,body});assert.equal(result.ok,false);
+    }
+  });
+  await test('007 REST private selections hidden from other seeker and administrator',async()=>{
+    for(const token of [a.token,admin.token]) {
+      const result=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}&select=accessibility_needs,enabled_features`,{token});
+      assert.equal(result.ok,true);assert.deepEqual(result.data,[]);
+      const write=await request(`/rest/v1/accessibility_preferences?user_id=eq.${b.id}`,{method:'PATCH',token,headers:{Prefer:'return=representation'},body:{preferences_reviewed:false}});
+      assert.equal(write.ok,true);assert.deepEqual(write.data,[]);
+    }
+  });
   await test('REST role escalation denied',async()=>{
     assert.equal((await request(`/rest/v1/profiles?id=eq.${a.id}`,{method:'PATCH',token:a.token,body:{role:'system_administrator'}})).ok,false);
   });

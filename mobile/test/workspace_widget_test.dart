@@ -43,7 +43,8 @@ void main() {
       -400,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Edit profile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit profile').hitTestable());
     await tester.pumpAndSettle();
     expect(find.text('Personal details'), findsOneWidget);
   });
@@ -73,7 +74,9 @@ void main() {
     final repo = FakeRepository();
     await tester.pumpWidget(fixture(repo));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Resumes'));
+    await tester.tap(find.byType(NavigationDestination).at(3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Manage resumes'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose PDF and upload'));
     await tester.pumpAndSettle();
@@ -85,7 +88,9 @@ void main() {
     final repo = FakeRepository();
     await tester.pumpWidget(fixture(repo, picker: FakePicker(dummyPdf())));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Resumes'));
+    await tester.tap(find.byType(NavigationDestination).at(3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Manage resumes'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose PDF and upload'));
     await tester.pumpAndSettle();
@@ -106,7 +111,9 @@ void main() {
       );
     await tester.pumpWidget(fixture(repo));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Resumes'));
+    await tester.tap(find.byType(NavigationDestination).at(3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Manage resumes'));
     await tester.pumpAndSettle();
     expect(find.text('Used in an application'), findsOneWidget);
     expect(find.text('Remove'), findsNothing);
@@ -115,12 +122,17 @@ void main() {
     final repo = FakeRepository();
     await tester.pumpWidget(fixture(repo));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(NavigationDestination).at(3));
+    await tester.tap(find.byType(NavigationDestination).at(4));
     await tester.pumpAndSettle();
     await tester.tap(find.text('High contrast'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Save preferences'));
-    await tester.tap(find.text('Save preferences'));
+    await tester.ensureVisible(find.text('Review changes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review changes').hitTestable());
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Confirm and save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirm and save').hitTestable());
     await tester.pumpAndSettle();
     expect(repo.value.preferences.highContrast, true);
   });
@@ -136,7 +148,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), null);
-      await tester.tap(find.byType(NavigationDestination).at(3));
+      await tester.tap(find.byType(NavigationDestination).at(4));
       await tester.pumpAndSettle();
       expect(tester.takeException(), null);
     },

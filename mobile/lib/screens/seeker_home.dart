@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/seeker_workspace.dart';
+import '../models/career_preview.dart';
+import 'jobs_screen.dart';
+import 'applications_screen.dart';
 import '../services/seeker_repository.dart';
 import '../state/seeker_controller.dart';
 import '../widgets/workspace_widgets.dart';
@@ -16,6 +19,8 @@ class SeekerHome extends StatefulWidget {
     required this.onAccessLost,
     required this.onSignOut,
     this.picker,
+    this.preview,
+    this.addSampleResume,
     super.key,
   });
   final SeekerRepository repository;
@@ -23,6 +28,8 @@ class SeekerHome extends StatefulWidget {
   final VoidCallback onAccessLost;
   final Future<void> Function() onSignOut;
   final PdfPicker? picker;
+  final CareerPreview? preview;
+  final VoidCallback? addSampleResume;
   @override
   State<SeekerHome> createState() => _SeekerHomeState();
 }
@@ -32,6 +39,54 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
   late final PdfPicker _picker;
   int _tab = 0;
   String? _sessionError;
+  int _revision = 0;
+  final _pages = <Widget Function()>[];
+  void _open(Widget Function() page) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _pages.add(page));
+  }
+
+  void _back() => setState(() => _pages.removeLast());
+  void _tabTo(int value) => setState(() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    _pages.clear();
+    _tab = value;
+  });
+  void _resumes() => _open(
+    () => ResumesScreen(
+      controller: _controller,
+      picker: _picker,
+      addSample: widget.addSampleResume,
+    ),
+  );
+  void _job(JobListing job) => _open(
+    () => JobDetails(
+      job: job,
+      applied: widget.preview!.alreadyApplied(job),
+      onReview: () => _open(
+        () => ApplicationReview(
+          job: job,
+          resumes: _controller.data!.resumes,
+          onManage: _resumes,
+          onConfirm: (id) async {
+            try {
+              widget.preview!.savePreview(job, id);
+            } on WorkspaceFailure catch (e) {
+              setState(() => _sessionError = e.message);
+              return;
+            }
+            setState(() {
+              _revision++;
+              _pages.clear();
+              _tab = 2;
+            });
+            await _controller.load();
+          },
+        ),
+      ),
+    ),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +133,9 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              if (_pages.isNotEmpty)
+                BackButton(onPressed: _controller.busy ? null : _back),
+              const Spacer(),
               IconButton(
                 tooltip: 'Refresh your information',
                 onPressed: _controller.busy || _controller.loading
@@ -88,12 +146,15 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
               TextButton.icon(
                 onPressed: _controller.busy ? null : _signOut,
                 icon: const Icon(Icons.logout),
-                label: const Text('Sign out'),
+                label: Text(widget.preview == null ? 'Sign out' : 'Exit demo'),
               ),
             ],
           ),
         ),
-        if (_controller.error != null)
+        if (_controller.error != null &&
+            (_controller.data == null ||
+                (_controller.data!.preferences.preferencesReviewed &&
+                    (_tab != 4 || _pages.isNotEmpty))))
           WorkspaceError(
             message: _controller.error!,
             onDismiss: _controller.clearError,
@@ -126,55 +187,105 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
                           ),
                         ),
                       )
-              : IndexedStack(
-                  index: _tab,
-                  children: [
-                    DashboardScreen(
-                      data: _controller.data!,
-                      openTab: (value) => setState(() => _tab = value),
-                    ),
-                    ProfileScreen(controller: _controller),
-                    ResumesScreen(controller: _controller, picker: _picker),
-                    AccessibilityScreen(controller: _controller),
-                  ],
+              : !_controller.data!.preferences.preferencesReviewed
+              ? AccessibilityScreen(
+                  key: const ValueKey('accessibility_onboarding'),
+                  controller: _controller,
+                  onboarding: true,
+                )
+              : PopScope(
+                  canPop: _pages.isEmpty,
+                  onPopInvokedWithResult: (popped, _) {
+                    if (!popped && _pages.isNotEmpty && !_controller.busy) {
+                      _back();
+                    }
+                  },
+                  child: IndexedStack(
+                    index: _pages.length,
+                    children: [
+                      IndexedStack(
+                        index: _tab,
+                        children: [
+                          if (widget.preview == null)
+                            DashboardScreen.authenticated(
+                              data: _controller.data!,
+                              openTab: _tabTo,
+                              openResumes: _resumes,
+                            )
+                          else
+                            DashboardScreen(
+                              data: _controller.data!,
+                              demoJobs: widget.preview!.jobs,
+                              openJob: _job,
+                              openTab: _tabTo,
+                              openResumes: _resumes,
+                            ),
+                          JobsScreen(preview: widget.preview, onOpen: _job),
+                          ApplicationsScreen(
+                            preview: widget.preview,
+                            revision: _revision,
+                            browse: () => _tabTo(1),
+                            onOpen: (a) => _open(() => ApplicationDetails(a)),
+                          ),
+                          ProfileScreen(
+                            controller: _controller,
+                            openResumes: _resumes,
+                          ),
+                          AccessibilityScreen(
+                            controller: _controller,
+                            active: _tab == 4 && _pages.isEmpty,
+                          ),
+                        ],
+                      ),
+                      for (final page in _pages) page(),
+                    ],
+                  ),
                 ),
         ),
-        NavigationBar(
-          height:
-              80 +
-              (MediaQuery.textScalerOf(context).scale(12) - 12).clamp(0, 60) *
-                  2,
-          selectedIndex: _tab,
-          animationDuration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 200),
-          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-          onDestinationSelected: _controller.data == null
-              ? null
-              : (value) => setState(() => _tab = value),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.description_outlined),
-              selectedIcon: Icon(Icons.description),
-              label: 'Resumes',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.accessibility_new),
-              label: 'Settings',
-              tooltip: 'Accessibility preferences',
-            ),
-          ],
-        ),
+        if (_controller.data?.preferences.preferencesReviewed ?? false)
+          NavigationBar(
+            height:
+                80 +
+                (MediaQuery.textScalerOf(context).scale(12) - 12).clamp(0, 60) *
+                    2,
+            selectedIndex: _tab,
+            animationDuration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 200),
+            labelBehavior: MediaQuery.textScalerOf(context).scale(12) > 16
+                ? NavigationDestinationLabelBehavior.onlyShowSelected
+                : NavigationDestinationLabelBehavior.alwaysShow,
+            onDestinationSelected: _controller.data == null || _controller.busy
+                ? null
+                : _tabTo,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.work_outline),
+                selectedIcon: Icon(Icons.work),
+                label: 'Jobs',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.assignment_outlined),
+                selectedIcon: Icon(Icons.assignment),
+                label: 'Applications',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.accessibility_new),
+                label: 'Settings',
+                tooltip: 'Accessibility preferences',
+              ),
+            ],
+          ),
       ],
     ),
   );

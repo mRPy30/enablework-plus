@@ -57,7 +57,13 @@ class _BootstrapAppState extends State<_BootstrapApp> {
 }
 
 class MainApp extends StatefulWidget {
-  const MainApp({this.service, this.repositoryBuilder, super.key});
+  const MainApp({
+    this.service,
+    this.repositoryBuilder,
+    this.demoBuilder,
+    super.key,
+  });
+  final Widget Function(ValueChanged<AccessibilityPreferences>)? demoBuilder;
   final AuthService? service;
   final SeekerRepository Function(AuthService, String)? repositoryBuilder;
   @override
@@ -116,6 +122,8 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
 
   ThemeData _theme(Brightness brightness, {bool contrast = false}) => ThemeData(
     useMaterial3: true,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    visualDensity: VisualDensity.standard,
     colorScheme: ColorScheme.fromSeed(
       seedColor: const Color(0xff0038a8),
       brightness: brightness,
@@ -156,44 +164,55 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
       );
     },
     home: Scaffold(
-      appBar: AppBar(title: const Text('EnableWork+')),
+      appBar: AppBar(
+        title: Text(
+          widget.demoBuilder == null
+              ? 'EnableWork+'
+              : 'DEMO DATA · EnableWork+',
+        ),
+      ),
       body: SafeArea(
-        child: widget.service == null
-            ? const Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      BrandIdentity(),
-                      SizedBox(height: 24),
-                      Text(
-                        'EnableWork+ is not connected yet. Please contact the administrator.',
-                        textAlign: TextAlign.center,
+        child:
+            widget.demoBuilder?.call(_apply) ??
+            (widget.service == null
+                ? const Center(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          BrandIdentity(),
+                          SizedBox(height: 24),
+                          Text(
+                            'EnableWork+ is not connected yet. Please contact the administrator.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              )
-            : AuthScreen(
-                service: widget.service!,
-                authenticatedBuilder: (context, invalidate) {
-                  final id = widget.service!.userId;
-                  if (id == null) return const SizedBox.shrink();
-                  return SeekerHome(
-                    key: ValueKey(id),
-                    repository:
-                        widget.repositoryBuilder?.call(widget.service!, id) ??
-                        SupabaseSeekerRepository(widget.service!, id),
-                    onPreferences: _apply,
-                    onAccessLost: () {
-                      _apply(const AccessibilityPreferences());
-                      invalidate();
+                    ),
+                  )
+                : AuthScreen(
+                    service: widget.service!,
+                    authenticatedBuilder: (context, invalidate) {
+                      final id = widget.service!.userId;
+                      if (id == null) return const SizedBox.shrink();
+                      return SeekerHome(
+                        key: ValueKey(id),
+                        repository:
+                            widget.repositoryBuilder?.call(
+                              widget.service!,
+                              id,
+                            ) ??
+                            SupabaseSeekerRepository(widget.service!, id),
+                        onPreferences: _apply,
+                        onAccessLost: () {
+                          _apply(const AccessibilityPreferences());
+                          invalidate();
+                        },
+                        onSignOut: widget.service!.signOut,
+                      );
                     },
-                    onSignOut: widget.service!.signOut,
-                  );
-                },
-              ),
+                  )),
       ),
     ),
   );

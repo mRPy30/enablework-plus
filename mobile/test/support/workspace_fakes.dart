@@ -19,7 +19,9 @@ SeekerProfile dummyProfile({String version = '2026-11-08T00:00:00Z'}) =>
     );
 SeekerWorkspace dummyWorkspace({
   List<ResumeRecord> resumes = const [],
-  AccessibilityPreferences preferences = const AccessibilityPreferences(),
+  AccessibilityPreferences preferences = const AccessibilityPreferences(
+    preferencesReviewed: true,
+  ),
 }) => SeekerWorkspace(
   profile: dummyProfile(),
   preferences: preferences,
@@ -32,7 +34,8 @@ class FakeRepository implements SeekerRepository {
   String get userId => 'dummy-a';
   SeekerWorkspace value = dummyWorkspace();
   Object? fail;
-  int saves = 0, uploads = 0, removals = 0;
+  int saves = 0, uploads = 0, removals = 0, preferenceSaves = 0;
+  Completer<void>? preferenceSaveGate;
   Completer<SeekerWorkspace>? pendingLoad;
   @override
   Future<SeekerWorkspace> load() async {
@@ -55,8 +58,10 @@ class FakeRepository implements SeekerRepository {
 
   @override
   Future<void> savePreferences(AccessibilityPreferences preferences) async {
+    await preferenceSaveGate?.future;
     preferences.validate();
     if (fail != null) throw fail!;
+    preferenceSaves++;
     value = SeekerWorkspace(
       profile: value.profile,
       preferences: preferences,

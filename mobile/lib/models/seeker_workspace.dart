@@ -157,31 +157,165 @@ class SeekerProfile {
 
 class AccessibilityPreferences {
   const AccessibilityPreferences({
-    this.textScale = 1,
-    this.highContrast = false,
-    this.reduceMotion = false,
-  });
-  final double textScale;
-  final bool highContrast, reduceMotion;
+    double? textScale,
+    bool? highContrast,
+    bool? reduceMotion,
+    List<String>? accessibilityNeeds,
+    List<String>? enabledFeatures,
+    bool? preferencesReviewed,
+    String? updatedAt,
+  }) : this._(
+         textScale,
+         highContrast,
+         reduceMotion,
+         accessibilityNeeds,
+         enabledFeatures,
+         preferencesReviewed,
+         updatedAt,
+       );
+
+  const AccessibilityPreferences._(
+    this._textScale,
+    this._highContrast,
+    this._reduceMotion,
+    this._accessibilityNeeds,
+    this._enabledFeatures,
+    this._preferencesReviewed,
+    this.updatedAt,
+  );
+
+  static const allowedNeeds = <String>{
+    'visual',
+    'mobility',
+    'hearing',
+    'speech',
+    'intellectual',
+    'learning',
+    'psychosocial',
+  };
+
+  // Data identifiers scheduled for the later feature phase. No UI switch or
+  // runtime capability is introduced by storing these choices in this phase.
+  static const allowedFeatures = <String>{
+    'voice_guidance',
+    'text_to_speech',
+    'voice_search',
+    'simplified_language',
+    'step_by_step_guidance',
+  };
+
+  final double? _textScale;
+  final bool? _highContrast, _reduceMotion;
+  double get textScale => _textScale ?? 1;
+  bool get highContrast => _highContrast ?? false;
+  bool get reduceMotion => _reduceMotion ?? false;
+  final List<String>? _accessibilityNeeds, _enabledFeatures;
+  final bool? _preferencesReviewed;
+  final String? updatedAt;
+  List<String> get accessibilityNeeds =>
+      List.unmodifiable(_accessibilityNeeds ?? const <String>[]);
+  List<String> get enabledFeatures =>
+      List.unmodifiable(_enabledFeatures ?? const <String>[]);
+  bool get preferencesReviewed => _preferencesReviewed ?? false;
+
+  static List<String>? _selection(Map<String, dynamic> row, String key) {
+    if (!row.containsKey(key)) return null; // Legacy three-column records.
+    final value = row[key];
+    if (value is! List || value.any((x) => x is! String)) {
+      throw const WorkspaceFailure('Invalid accessibility selection.');
+    }
+    return List<String>.unmodifiable(value.cast<String>());
+  }
+
   factory AccessibilityPreferences.fromJson(Map<String, dynamic> row) {
+    if (row.containsKey('preferences_reviewed') &&
+        row['preferences_reviewed'] is! bool) {
+      throw const WorkspaceFailure('Invalid preference confirmation.');
+    }
     final value = AccessibilityPreferences(
       textScale: (row['text_scale'] as num).toDouble(),
       highContrast: row['high_contrast'] as bool,
       reduceMotion: row['reduce_motion'] as bool,
+      accessibilityNeeds: _selection(row, 'accessibility_needs'),
+      enabledFeatures: _selection(row, 'enabled_features'),
+      preferencesReviewed: row['preferences_reviewed'] as bool?,
+      updatedAt: row['updated_at'] as String?,
     );
     value.validate();
     return value;
   }
+
   void validate() {
     if (!textScale.isFinite || textScale < 0.8 || textScale > 2) {
       throw const WorkspaceFailure('Choose a text size between 80% and 200%.');
     }
+    for (final pair in [
+      (accessibilityNeeds, allowedNeeds),
+      (enabledFeatures, allowedFeatures),
+    ]) {
+      if (pair.$1.length > pair.$2.length ||
+          pair.$1.toSet().length != pair.$1.length ||
+          pair.$1.any((x) => !pair.$2.contains(x))) {
+        throw const WorkspaceFailure(
+          'Choose valid, unique accessibility options.',
+        );
+      }
+    }
   }
 
+  AccessibilityPreferences copyWith({
+    double? textScale,
+    bool? highContrast,
+    bool? reduceMotion,
+    List<String>? accessibilityNeeds,
+    List<String>? enabledFeatures,
+    bool? preferencesReviewed,
+    String? updatedAt,
+  }) => AccessibilityPreferences(
+    textScale: textScale ?? this.textScale,
+    highContrast: highContrast ?? this.highContrast,
+    reduceMotion: reduceMotion ?? this.reduceMotion,
+    accessibilityNeeds: List.unmodifiable(
+      accessibilityNeeds ?? this.accessibilityNeeds,
+    ),
+    enabledFeatures: List.unmodifiable(enabledFeatures ?? this.enabledFeatures),
+    preferencesReviewed: preferencesReviewed ?? this.preferencesReviewed,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+
+  // A legacy three-field editor does not express an intent to clear new fields.
+  // Explicit [] / false still means clear. The supplied version wins so stale
+  // callers cannot silently acquire a newer version while keeping old values.
+  AccessibilityPreferences mergeOnto(AccessibilityPreferences current) =>
+      current.copyWith(
+        textScale: _textScale,
+        highContrast: _highContrast,
+        reduceMotion: _reduceMotion,
+        accessibilityNeeds: _accessibilityNeeds,
+        enabledFeatures: _enabledFeatures,
+        preferencesReviewed: _preferencesReviewed,
+        updatedAt: updatedAt,
+      );
+
+  Map<String, dynamic> get updateJson => {
+    if (_textScale != null)
+      'text_scale': double.parse(textScale.toStringAsFixed(2)),
+    if (_highContrast != null) 'high_contrast': highContrast,
+    if (_reduceMotion != null) 'reduce_motion': reduceMotion,
+    if (_accessibilityNeeds != null) 'accessibility_needs': accessibilityNeeds,
+    if (_enabledFeatures != null) 'enabled_features': enabledFeatures,
+    if (_preferencesReviewed != null)
+      'preferences_reviewed': preferencesReviewed,
+  };
+
   Map<String, dynamic> get json => {
+    ...updateJson,
     'text_scale': double.parse(textScale.toStringAsFixed(2)),
     'high_contrast': highContrast,
     'reduce_motion': reduceMotion,
+    'accessibility_needs': accessibilityNeeds,
+    'enabled_features': enabledFeatures,
+    'preferences_reviewed': preferencesReviewed,
   };
 }
 

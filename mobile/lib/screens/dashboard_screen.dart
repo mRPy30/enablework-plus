@@ -1,128 +1,450 @@
 import 'package:flutter/material.dart';
 
+import '../models/career_preview.dart';
 import '../models/seeker_workspace.dart';
 import '../widgets/workspace_widgets.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({required this.data, required this.openTab, super.key});
+  const DashboardScreen({
+    required this.data,
+    required this.openTab,
+    required this.openResumes,
+    required this.openJob,
+    this.demoJobs,
+    super.key,
+  });
+  const DashboardScreen.authenticated({
+    required this.data,
+    required this.openTab,
+    required this.openResumes,
+    super.key,
+  }) : demoJobs = null,
+       openJob = null;
+
   final SeekerWorkspace data;
-  final void Function(int) openTab;
+  final VoidCallback openResumes;
+  final ValueChanged<int> openTab;
+  final ValueChanged<JobListing>? openJob;
+  // Null in the authenticated app; an empty demo catalog is a distinct state.
+  final List<JobListing>? demoJobs;
+
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      Semantics(
-        header: true,
-        child: Text(
-          'Welcome, ${data.profile.fields['full_name']!.trim().isEmpty ? 'job seeker' : data.profile.fields['full_name']}',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-      ),
-      const SizedBox(height: 8),
-      const Text('Your next step starts here.'),
-      const SizedBox(height: 24),
+  Widget build(BuildContext context) {
+    final jobs = demoJobs;
+    final applicationOverview = <Widget>[
+      const _Heading('Application overview'),
       SectionCard(
-        title: 'Your profile',
+        title: data.totalApplications == 1
+            ? '1 total application'
+            : '${data.totalApplications} total applications',
         children: [
-          Text('${data.profile.completionPercent}% complete'),
+          if (data.totalApplications == 0)
+            Text(
+              jobs == null
+                  ? 'Your application activity will appear here after you apply.'
+                  : 'Save a demo application to see its status here.',
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final status in applicationStatusLabels.entries)
+                  if ((data.applicationCounts[status.key] ?? 0) > 0)
+                    Chip(
+                      label: Text(
+                        '${status.value}: ${data.applicationCounts[status.key]}',
+                      ),
+                    ),
+              ],
+            ),
           const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: data.profile.completionPercent / 100,
-            semanticsLabel: 'Profile completeness',
-            semanticsValue: '${data.profile.completionPercent}%',
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Add your skills, background and preferred work. Phone and work adjustments are optional and do not affect this score.',
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.tonal(
-              onPressed: () => openTab(1),
-              child: const Text('Edit profile'),
-            ),
-          ),
+          _Link('See all applications', () => openTab(2)),
         ],
       ),
-      SectionCard(
-        title: 'Current resume',
-        children: [
-          Text(data.currentResume?.title ?? 'No current resume selected.'),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.tonal(
-              onPressed: () => openTab(2),
-              child: const Text('Manage resumes'),
-            ),
-          ),
-        ],
-      ),
-      SectionCard(
-        title: 'Application activity',
-        children: [
-          Text(
-            '${data.totalApplications} total applications',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final largeText = MediaQuery.textScalerOf(context).scale(16) > 22;
-              final columns = largeText
-                  ? 1
-                  : constraints.maxWidth >= 600
-                  ? 3
-                  : constraints.maxWidth >= 360
-                  ? 2
-                  : 1;
-              final width =
-                  (constraints.maxWidth - 12 * (columns - 1)) / columns;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final status in applicationStatusLabels.entries)
-                    SizedBox(
-                      width: width,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
+    ];
+    return ListView(
+      key: const PageStorageKey('seeker-dashboard'),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      children: [
+        _ProfileCard(
+          data: data,
+          authenticated: jobs == null,
+          edit: () => openTab(3),
+        ),
+        const _Heading('Quick actions'),
+        LayoutBuilder(
+          builder: (context, box) {
+            final twoColumns =
+                box.maxWidth >= 320 &&
+                MediaQuery.textScalerOf(context).scale(14) <= 20;
+            final width = twoColumns ? (box.maxWidth - 10) / 2 : box.maxWidth;
+            return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final (icon, label, action)
+                    in <(IconData, String, VoidCallback)>[
+                      (Icons.search, 'Find jobs', () => openTab(1)),
+                      (
+                        Icons.assignment_outlined,
+                        'My applications',
+                        () => openTab(2),
+                      ),
+                      (
+                        Icons.description_outlined,
+                        'Manage resumes',
+                        openResumes,
+                      ),
+                      (
+                        Icons.accessibility_new,
+                        'Accessibility settings',
+                        () => openTab(4),
+                      ),
+                    ])
+                  SizedBox(
+                    width: width,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                        minimumSize: const Size(0, 56),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${data.applicationCounts[status.key]}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall,
-                              ),
-                              Text(status.value),
-                            ],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerLow,
+                      ),
+                      onPressed: action,
+                      child: Row(
+                        children: [
+                          Icon(icon, size: 22),
+                          const SizedBox(width: 9),
+                          Flexible(child: Text(label)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        if (jobs == null) ...[
+          ...applicationOverview,
+          const _Heading('Job opportunities'),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.work_outline,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Listings unavailable',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Live job listings are not connected yet.'),
+                  _Link('See all jobs', () => openTab(1)),
+                ],
+              ),
+            ),
+          ),
+        ] else ...[
+          const _Heading('Job opportunities'),
+          if (jobs.isEmpty)
+            const Text('No demo jobs available.')
+          else
+            for (final job in jobs.take(2))
+              _JobCard(job: job, open: () => openJob!(job)),
+          _Link('See all jobs', () => openTab(1)),
+          ...applicationOverview,
+        ],
+      ],
+    );
+  }
+}
+
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({
+    required this.data,
+    required this.authenticated,
+    required this.edit,
+  });
+  final bool authenticated;
+  final SeekerWorkspace data;
+  final VoidCallback edit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context), colors = theme.colorScheme;
+    final name = data.profile.fields['full_name']!.trim();
+    final parts = name.split(RegExp(r'\s+'));
+    final initials = name.isEmpty
+        ? null
+        : (parts.first.characters.first +
+                  (parts.length > 1 ? parts.last.characters.first : ''))
+              .toUpperCase();
+    final percent = data.profile.completionPercent;
+    final headline = data.profile.fields['headline']!.trim();
+    final location =
+        [data.profile.fields['city'], data.profile.fields['province']]
+            .whereType<String>()
+            .map((part) => part.trim())
+            .where((part) => part.isNotEmpty)
+            .join(', ');
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ColoredBox(
+            color: colors.primary,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ExcludeSemantics(
+                        child: CircleAvatar(
+                          backgroundColor: colors.primaryContainer,
+                          foregroundColor: colors.onPrimaryContainer,
+                          child: initials == null
+                              ? const Icon(Icons.person_outline)
+                              : Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(initials),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      if (authenticated && location.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            location,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: colors.onPrimary,
+                            ),
+                            textAlign: TextAlign.end,
                           ),
                         ),
+                      ],
+                      if (!authenticated)
+                        ExcludeSemantics(
+                          child: Icon(
+                            Icons.notifications_none_outlined,
+                            color: colors.onPrimary,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      name.isEmpty && authenticated
+                          ? 'Welcome back'
+                          : 'Welcome, ${name.isEmpty ? 'job seeker' : name}',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: colors.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (headline.isNotEmpty)
+                    Text(
+                      headline,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.onPrimary,
                       ),
                     ),
                 ],
-              );
-            },
-          ),
-          if (data.totalApplications == 0)
-            const Padding(
-              padding: EdgeInsets.only(top: 16),
-              child: Text(
-                'Your application activity will appear here after you apply.',
               ),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'Profile readiness',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    Text(
+                      '$percent% complete',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: colors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: percent / 100,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(6),
+                  semanticsLabel: 'Profile completeness',
+                  semanticsValue: '$percent%',
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  percent == 100 ? 'Your profile is complete.' : 'Add your skills and background to complete your profile.',
+                ),
+                FilledButton.tonal(
+                  onPressed: edit,
+                  child: Text(
+                    authenticated && percent < 100
+                        ? 'Complete profile'
+                        : 'Edit profile',
+                  ),
+                ),
+                const Divider(height: 20),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.description_outlined,
+                      size: 20,
+                      color: colors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        data.currentResume == null
+                            ? 'No current resume selected.'
+                            : 'Current resume: ${data.currentResume!.title}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
-    ],
+    );
+  }
+}
+
+class _JobCard extends StatelessWidget {
+  const _JobCard({required this.job, required this.open});
+  final JobListing job;
+  final VoidCallback open;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context), colors = theme.colorScheme;
+    final accessibility = job.accessibility
+        .where((s) => s.trim().isNotEmpty)
+        .join(' · ');
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.secondaryContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  'DEMO DATA',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colors.onSecondaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Semantics(
+              header: true,
+              child: Text(job.title, style: theme.textTheme.titleLarge),
+            ),
+            Text(
+              [job.company, job.city].where((s) => s.isNotEmpty).join(' · '),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              [
+                jobTypeLabels[job.employment],
+                workArrangementLabels[job.arrangement],
+              ].nonNulls.join(' · '),
+              style: theme.textTheme.labelLarge,
+            ),
+            const Divider(height: 20),
+            Text(
+              'Workplace accessibility: ${accessibility.isEmpty ? 'Not provided' : accessibility}',
+            ),
+            _Link('View job details', open),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Heading extends StatelessWidget {
+  const _Heading(this.label);
+  final String label;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(0, 22, 0, 10),
+    child: Semantics(
+      header: true,
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.titleLarge
+            ?.copyWith(fontWeight: FontWeight.w600),
+      ),
+    ),
+  );
+}
+
+class _Link extends StatelessWidget {
+  const _Link(this.label, this.action);
+  final String label;
+  final VoidCallback action;
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: TextButton.icon(
+      onPressed: action,
+      icon: const Icon(Icons.arrow_forward, size: 18),
+      iconAlignment: IconAlignment.end,
+      label: Text(label),
+    ),
   );
 }

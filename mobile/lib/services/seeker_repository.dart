@@ -157,7 +157,10 @@ class SupabaseSeekerRepository implements SeekerRepository, ResumeBackend {
       _client.rpc('my_job_seeker_profile'),
       _client
           .from('accessibility_preferences')
-          .select('text_scale,high_contrast,reduce_motion')
+          .select(
+            'text_scale,high_contrast,reduce_motion,accessibility_needs,'
+            'enabled_features,preferences_reviewed,updated_at',
+          )
           .eq('user_id', userId)
           .single(),
       _listResumes(),
@@ -226,12 +229,32 @@ class SupabaseSeekerRepository implements SeekerRepository, ResumeBackend {
   Future<void> savePreferences(AccessibilityPreferences preferences) =>
       _run(() async {
         preferences.validate();
-        await _client
+        if (preferences.updateJson.isEmpty) return;
+        // Controller snapshots carry the read version. Legacy callers without
+        // one get a version before their partial update; omitted new fields are
+        // never written. The actual UPDATE is atomic and guarded by RLS + CAS.
+        final version =
+            preferences.updatedAt ??
+            (await _client
+                    .from('accessibility_preferences')
+                    .select('updated_at')
+                    .eq('user_id', userId)
+                    .single())['updated_at']
+                as String;
+        await _guard();
+        final result = await _client
             .from('accessibility_preferences')
-            .update(preferences.json)
+            .update(preferences.updateJson)
             .eq('user_id', userId)
+            .eq('updated_at', version)
             .select('user_id')
-            .single();
+            .maybeSingle();
+        if (result == null) {
+          await _guard();
+          throw const WorkspaceFailure(
+            'Your accessibility preferences changed elsewhere. Reload before saving.',
+          );
+        }
       });
   @override
   Future<void> upload(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
+import '../models/account_profile.dart';
 import '../widgets/workspace_widgets.dart';
 import '../widgets/brand_identity.dart';
 
@@ -59,8 +60,8 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<bool> _checkAccess() async {
     if (!widget.service.hasSession) return false;
     try {
-      await widget.service.requireAccess();
-      return true;
+      final account = await widget.service.requireAccess();
+      return account.role == AppRole.jobSeeker;
     } catch (_) {
       return false;
     }

@@ -203,4 +203,206 @@ void main() {
     expect(current.highContrast, false);
     c.dispose();
   });
+  group('accessibility preference foundation', () {
+    Map<String, dynamic> legacy() => {
+      'text_scale': 1.75,
+      'high_contrast': true,
+      'reduce_motion': true,
+    };
+    AccessibilityPreferences stored() => AccessibilityPreferences.fromJson({
+      ...legacy(),
+      'accessibility_needs': ['visual', 'hearing'],
+      'enabled_features': ['step_by_step_guidance'],
+      'preferences_reviewed': true,
+      'updated_at': '2026-11-09T01:00:00.123456Z',
+    });
+    for (final need in AccessibilityPreferences.allowedNeeds) {
+      test('accepts need $need without enabling features', () {
+        final p = AccessibilityPreferences(accessibilityNeeds: [need]);
+        p.validate();
+        expect(p.enabledFeatures, isEmpty);
+        expect(p.preferencesReviewed, false);
+      });
+    }
+    for (final feature in AccessibilityPreferences.allowedFeatures) {
+      test('accepts scheduled feature ID $feature without inferring needs', () {
+        final p = AccessibilityPreferences(enabledFeatures: [feature]);
+        p.validate();
+        expect(p.accessibilityNeeds, isEmpty);
+      });
+    }
+    test('all seven needs and multiple independent choices are valid', () {
+      final p = AccessibilityPreferences(
+        accessibilityNeeds: AccessibilityPreferences.allowedNeeds.toList(),
+        enabledFeatures: const ['voice_guidance', 'simplified_language'],
+      );
+      p.validate();
+      expect(p.accessibilityNeeds.length, 7);
+      expect(p.enabledFeatures.length, 2);
+    });
+    test('empty choices and unreviewed are safe defaults', () {
+      const p = AccessibilityPreferences();
+      p.validate();
+      expect(p.accessibilityNeeds, isEmpty);
+      expect(p.enabledFeatures, isEmpty);
+      expect(p.preferencesReviewed, false);
+      expect(p.textScale, 1);
+    });
+    for (final invalid in [
+      const AccessibilityPreferences(accessibilityNeeds: ['unknown']),
+      const AccessibilityPreferences(accessibilityNeeds: ['visual', 'visual']),
+      AccessibilityPreferences(accessibilityNeeds: List.filled(8, 'visual')),
+      const AccessibilityPreferences(enabledFeatures: ['high_contrast']),
+      const AccessibilityPreferences(
+        enabledFeatures: ['voice_search', 'voice_search'],
+      ),
+    ]) {
+      test('rejects invalid/duplicate selection ${invalid.json}', () {
+        expect(invalid.validate, throwsA(isA<WorkspaceFailure>()));
+      });
+    }
+    test('legacy deserialization preserves original preferences', () {
+      final p = AccessibilityPreferences.fromJson(legacy());
+      expect(p.textScale, 1.75);
+      expect(p.highContrast, true);
+      expect(p.reduceMotion, true);
+      expect(p.accessibilityNeeds, isEmpty);
+      expect(p.enabledFeatures, isEmpty);
+      expect(p.preferencesReviewed, false);
+    });
+    test('rejects explicit nulls, invalid types and invalid review flags', () {
+      for (final patch in <Map<String, dynamic>>[
+        {'accessibility_needs': null},
+        {
+          'accessibility_needs': [null],
+        },
+        {'enabled_features': 'voice_search'},
+        {
+          'enabled_features': [1],
+        },
+        {'preferences_reviewed': null},
+        {'preferences_reviewed': 'true'},
+      ]) {
+        expect(
+          () => AccessibilityPreferences.fromJson({...legacy(), ...patch}),
+          throwsA(isA<WorkspaceFailure>()),
+        );
+      }
+    });
+    test('round trip preserves full values and read version separately', () {
+      final p = stored();
+      final next = AccessibilityPreferences.fromJson(p.json);
+      expect(next.json, p.json);
+      expect(p.json.containsKey('updated_at'), false);
+      expect(
+        p.updateJson.keys,
+        unorderedEquals([
+          'text_scale',
+          'high_contrast',
+          'reduce_motion',
+          'accessibility_needs',
+          'enabled_features',
+          'preferences_reviewed',
+        ]),
+      );
+    });
+    test('legacy three-field editor does not clear new selections', () {
+      final p = const AccessibilityPreferences(
+        textScale: 2,
+        highContrast: false,
+        reduceMotion: false,
+      ).mergeOnto(stored());
+      expect(p.accessibilityNeeds, ['visual', 'hearing']);
+      expect(p.enabledFeatures, ['step_by_step_guidance']);
+      expect(p.preferencesReviewed, true);
+      expect(p.textScale, 2);
+      expect(p.updatedAt, stored().updatedAt);
+    });
+    test(
+      'single-setting patch preserves unrelated original and new values',
+      () {
+        final patch = const AccessibilityPreferences(highContrast: false);
+        expect(patch.updateJson, {'high_contrast': false});
+        final p = patch.mergeOnto(stored());
+        expect(p.highContrast, false);
+        expect(p.textScale, 1.75);
+        expect(p.reduceMotion, true);
+        expect(p.preferencesReviewed, true);
+        expect(p.accessibilityNeeds, stored().accessibilityNeeds);
+      },
+    );
+    test('explicit empty arrays and false clear only the intended choices', () {
+      final p = const AccessibilityPreferences(
+        accessibilityNeeds: [],
+        enabledFeatures: [],
+        preferencesReviewed: false,
+      ).mergeOnto(stored());
+      expect(p.accessibilityNeeds, isEmpty);
+      expect(p.enabledFeatures, isEmpty);
+      expect(p.preferencesReviewed, false);
+      expect(p.textScale, 1.75);
+    });
+    test('copyWith retains values and collections cannot be mutated', () {
+      final p = stored().copyWith(textScale: 1.5);
+      expect(p.accessibilityNeeds, stored().accessibilityNeeds);
+      expect(() => p.accessibilityNeeds.add('speech'), throwsUnsupportedError);
+      expect(() => p.enabledFeatures.clear(), throwsUnsupportedError);
+      expect(p.updatedAt, stored().updatedAt);
+    });
+    test('an explicitly stale version is not replaced by a fresh baseline', () {
+      final p = const AccessibilityPreferences(
+        highContrast: false,
+        updatedAt: 'old-version',
+      ).mergeOnto(stored());
+      expect(p.updatedAt, 'old-version');
+    });
+    test(
+      'controller preserves new choices through existing Settings save',
+      () async {
+        final repo = FakeRepository()
+          ..value = dummyWorkspace(preferences: stored());
+        var applied = const AccessibilityPreferences();
+        final c = SeekerController(
+          repo,
+          onPreferences: (p) => applied = p,
+          onAccessLost: () {},
+        );
+        await c.load();
+        expect(
+          await c.savePreferences(
+            const AccessibilityPreferences(
+              textScale: 1.25,
+              highContrast: false,
+              reduceMotion: false,
+            ),
+          ),
+          true,
+        );
+        expect(applied.accessibilityNeeds, ['visual', 'hearing']);
+        expect(applied.enabledFeatures, ['step_by_step_guidance']);
+        expect(applied.preferencesReviewed, true);
+        expect(applied.textScale, 1.25);
+        c.dispose();
+        expect(c.data, null);
+      },
+    );
+    test('invalid choices never replace controller data', () async {
+      final repo = FakeRepository()
+        ..value = dummyWorkspace(preferences: stored());
+      final c = SeekerController(
+        repo,
+        onPreferences: (_) {},
+        onAccessLost: () {},
+      );
+      await c.load();
+      expect(
+        await c.savePreferences(
+          const AccessibilityPreferences(accessibilityNeeds: ['forged']),
+        ),
+        false,
+      );
+      expect(c.data!.preferences.accessibilityNeeds, ['visual', 'hearing']);
+      c.dispose();
+    });
+  });
 }
