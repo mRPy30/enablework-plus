@@ -30,6 +30,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _message;
   bool _busy = false;
   bool _recovering = false;
+  bool _showPassword = false;
 
   @override
   void initState() {
@@ -134,16 +135,46 @@ class _AuthScreenState extends State<AuthScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const BrandIdentity(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                Text(
+                  _recovering ? 'Reset your password' : 'Welcome back',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _recovering
+                      ? 'Create a new password to keep your account secure.'
+                      : 'Find work that works for you, with an experience shaped around your access needs.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 22),
                 if (authenticated && !_recovering) ...[
-                  const Text(
-                    'Authentication verified. Feature screens follow in later phases.',
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'PWD Job Seeker',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Authentication verified. Your protected workspace is ready.',
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 12),
                   FilledButton(
                     onPressed: _busy
                         ? null
@@ -151,36 +182,73 @@ class _AuthScreenState extends State<AuthScreen> {
                     child: const Text('Sign out'),
                   ),
                 ] else ...[
-                  if (!_recovering) ...[
-                    const Text(
-                      'PWD Job Seeker',
-                      style: TextStyle(fontSize: 24),
-                    ),
-                    TextField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      decoration: const InputDecoration(labelText: 'Email'),
-                    ),
-                    TextField(
-                      controller: _name,
-                      decoration: const InputDecoration(
-                        labelText: 'Name (registration only)',
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!_recovering)
+                            Text(
+                              'PWD Job Seeker',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          if (!_recovering) const SizedBox(height: 16),
+                          if (!_recovering)
+                            TextField(
+                              controller: _email,
+                              keyboardType: TextInputType.emailAddress,
+                              autocorrect: false,
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                prefixIcon: Icon(Icons.mail_outline),
+                              ),
+                            ),
+                          if (!_recovering) const SizedBox(height: 12),
+                          if (!_recovering)
+                            TextField(
+                              controller: _name,
+                              decoration: const InputDecoration(
+                                labelText: 'Name (registration only)',
+                                prefixIcon: Icon(Icons.person_outline),
+                              ),
+                              maxLength: 120,
+                            ),
+                          if (!_recovering) const SizedBox(height: 4),
+                          TextField(
+                            controller: _password,
+                            obscureText: !_showPassword,
+                            enableSuggestions: false,
+                            autocorrect: false,
+                            decoration: InputDecoration(
+                              labelText: _recovering
+                                  ? 'New password (at least 12 characters)'
+                                  : 'Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                tooltip: _showPassword
+                                    ? 'Hide password'
+                                    : 'Show password',
+                                constraints: const BoxConstraints(
+                                  minWidth: 48,
+                                  minHeight: 48,
+                                ),
+                                onPressed: () => setState(() {
+                                  _showPassword = !_showPassword;
+                                }),
+                                icon: Icon(
+                                  _showPassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      maxLength: 120,
-                    ),
-                  ],
-                  TextField(
-                    controller: _password,
-                    obscureText: true,
-                    enableSuggestions: false,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      labelText: _recovering
-                          ? 'New password (at least 12 characters)'
-                          : 'Password',
                     ),
                   ),
+                  const SizedBox(height: 14),
                   if (_recovering)
                     FilledButton(
                       onPressed: _busy

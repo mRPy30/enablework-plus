@@ -5,6 +5,8 @@ import '../models/career_preview.dart';
 import 'jobs_screen.dart';
 import 'applications_screen.dart';
 import '../services/seeker_repository.dart';
+import '../services/career_repository.dart';
+import 'authenticated_job_flow.dart';
 import '../state/seeker_controller.dart';
 import '../widgets/workspace_widgets.dart';
 import 'dashboard_screen.dart';
@@ -40,6 +42,11 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
   int _tab = 0;
   String? _sessionError;
   int _revision = 0;
+  bool _careerBusy = false;
+  bool get _busy => _controller.busy || _careerBusy;
+  CareerRepository? get _career => widget.repository is CareerRepository
+      ? widget.repository as CareerRepository
+      : null;
   final _pages = <Widget Function()>[];
   void _open(Widget Function() page) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -47,22 +54,27 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
   }
 
   void _back() => setState(() => _pages.removeLast());
-  void _tabTo(int value) => setState(() {
-    FocusManager.instance.primaryFocus?.unfocus();
-    _pages.clear();
-    _tab = value;
-  });
+  void _tabTo(int value) {
+    if (_busy) return;
+    setState(() {
+      FocusManager.instance.primaryFocus?.unfocus();
+      _pages.clear();
+      _tab = value;
+      if (value == 2) _revision++;
+    });
+  }
+
   void _resumes() => _open(
     () => ResumesScreen(
       controller: _controller,
       picker: _picker,
-      addSample: widget.addSampleResume,
+      addSample: widget.preview == null ? null : widget.addSampleResume,
     ),
   );
-  void _job(JobListing job) => _open(
+  void _openPreviewJob(CareerPreview preview, JobListing job) => _open(
     () => JobDetails(
       job: job,
-      applied: widget.preview!.alreadyApplied(job),
+      applied: preview.alreadyApplied(job),
       onReview: () => _open(
         () => ApplicationReview(
           job: job,
@@ -70,7 +82,7 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
           onManage: _resumes,
           onConfirm: (id) async {
             try {
-              widget.preview!.savePreview(job, id);
+              preview.savePreview(job, id);
             } on WorkspaceFailure catch (e) {
               setState(() => _sessionError = e.message);
               return;
@@ -84,6 +96,30 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
           },
         ),
       ),
+    ),
+  );
+
+  void _openLiveJob(JobListing job) => _open(
+    () => AuthenticatedJobFlow(
+      jobId: job.id,
+      repository: _career!,
+      resumes: _controller.data!.resumes,
+      onManage: _resumes,
+      onAccessLost: widget.onAccessLost,
+      onBusy: (value) {
+        if (mounted) setState(() => _careerBusy = value);
+      },
+      onSubmitted: (application) {
+        if (!mounted) return;
+        setState(() {
+          _careerBusy = false;
+          _revision++;
+          _tab = 2;
+          _pages.clear();
+          _pages.add(() => ApplicationDetails(application));
+        });
+        _controller.load();
+      },
     ),
   );
 
@@ -101,7 +137,7 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !_controller.busy) {
+    if (state == AppLifecycleState.resumed && !_busy) {
       _controller.load();
     }
   }
@@ -134,20 +170,29 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               if (_pages.isNotEmpty)
-                BackButton(onPressed: _controller.busy ? null : _back),
+                BackButton(onPressed: _busy ? null : _back),
               const Spacer(),
               IconButton(
                 tooltip: 'Refresh your information',
-                onPressed: _controller.busy || _controller.loading
+                onPressed: _busy || _controller.loading
                     ? null
                     : _controller.load,
                 icon: const Icon(Icons.refresh),
               ),
-              TextButton.icon(
-                onPressed: _controller.busy ? null : _signOut,
-                icon: const Icon(Icons.logout),
-                label: Text(widget.preview == null ? 'Sign out' : 'Exit demo'),
-              ),
+              if (_tab == 4)
+                PopupMenuButton<String>(
+                  tooltip: 'Account options',
+                  enabled: !_busy,
+                  onSelected: (_) => _signOut(),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'sign-out',
+                      child: Text(
+                        widget.preview == null ? 'Sign out' : 'End session',
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -196,7 +241,7 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
               : PopScope(
                   canPop: _pages.isEmpty,
                   onPopInvokedWithResult: (popped, _) {
-                    if (!popped && _pages.isNotEmpty && !_controller.busy) {
+                    if (!popped && _pages.isNotEmpty && !_busy) {
                       _back();
                     }
                   },
@@ -206,27 +251,58 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
                       IndexedStack(
                         index: _tab,
                         children: [
-                          if (widget.preview == null)
+                          if (widget.preview case final preview?) ...[
+                            DashboardScreen(
+                              data: _controller.data!,
+                              demoJobs: preview.jobs,
+                              openJob: (job) => _openPreviewJob(preview, job),
+                              openTab: _tabTo,
+                              openResumes: _resumes,
+                            ),
+                            JobsScreen(
+                              preview: preview,
+                              onOpen: (job) => _openPreviewJob(preview, job),
+                            ),
+                            ApplicationsScreen(
+                              preview: preview,
+                              revision: _revision,
+                              browse: () => _tabTo(1),
+                              onOpen: (a) => _open(() => ApplicationDetails(a)),
+                            ),
+                          ] else ...[
                             DashboardScreen.authenticated(
                               data: _controller.data!,
                               openTab: _tabTo,
                               openResumes: _resumes,
-                            )
-                          else
-                            DashboardScreen(
-                              data: _controller.data!,
-                              demoJobs: widget.preview!.jobs,
-                              openJob: _job,
-                              openTab: _tabTo,
-                              openResumes: _resumes,
                             ),
-                          JobsScreen(preview: widget.preview, onOpen: _job),
-                          ApplicationsScreen(
-                            preview: widget.preview,
-                            revision: _revision,
-                            browse: () => _tabTo(1),
-                            onOpen: (a) => _open(() => ApplicationDetails(a)),
-                          ),
+                            if (_career case final career?)
+                              JobsScreen.authenticated(
+                                loadJobs: career.loadJobs,
+                                onOpen: _openLiveJob,
+                                onAccessLost: widget.onAccessLost,
+                              )
+                            else
+                              const _UnavailableCareerTab(
+                                heading: 'Find a job',
+                                title: 'Listings currently unavailable',
+                                message: 'Job listings will appear here once the service is available. Please try again later.',
+                              ),
+                            if (_career case final career?)
+                              ApplicationsScreen.authenticated(
+                                loadApplications: career.loadApplications,
+                                revision: _revision,
+                                browse: () => _tabTo(1),
+                                onAccessLost: widget.onAccessLost,
+                                onOpen: (a) =>
+                                    _open(() => ApplicationDetails(a)),
+                              )
+                            else
+                              const _UnavailableCareerTab(
+                                heading: 'Your applications',
+                                title: 'Application history unavailable',
+                                message: 'You can check your application totals on Home. Individual application details are currently unavailable.',
+                              ),
+                          ],
                           ProfileScreen(
                             controller: _controller,
                             openResumes: _resumes,
@@ -288,5 +364,26 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
           ),
       ],
     ),
+  );
+}
+
+class _UnavailableCareerTab extends StatelessWidget {
+  const _UnavailableCareerTab({
+    required this.heading,
+    required this.title,
+    required this.message,
+  });
+
+  final String heading;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      CareerHeading(heading),
+      SectionCard(title: title, children: [Text(message)]),
+    ],
   );
 }

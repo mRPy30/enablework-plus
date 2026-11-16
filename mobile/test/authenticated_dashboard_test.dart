@@ -93,6 +93,33 @@ void main() {
       );
     });
   }
+  testWidgets(
+    'Authenticated career tabs offer no preview or submission actions',
+    (t) async {
+      await render(t, FakeRepository()..value = workspace(large: true));
+      await t.pumpAndSettle();
+      await tapLabel(t, 'Find jobs');
+      expect(find.text('Listings currently unavailable'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Work arrangement'), findsNothing);
+      expect(find.text('View job'), findsNothing);
+      expect(find.text('Save application'), findsNothing);
+      expect(find.text('Try again'), findsNothing);
+      await expectLater(t, meetsGuideline(androidTapTargetGuideline));
+      expect(t.takeException(), isNull);
+
+      await t.tap(find.byIcon(Icons.assignment_outlined).last);
+      await t.pumpAndSettle();
+      expect(find.text('Application history unavailable'), findsOneWidget);
+      expect(find.text('No applications yet'), findsNothing);
+      expect(find.text('View application'), findsNothing);
+      expect(find.text('Save application'), findsNothing);
+      expect(find.textContaining('Sample data'), findsNothing);
+      expect(find.text('Try again'), findsNothing);
+      await expectLater(t, meetsGuideline(androidTapTargetGuideline));
+      expect(t.takeException(), isNull);
+    },
+  );
   testWidgets('Authenticated resume shortcut opens the actual PDF manager', (
     t,
   ) async {
@@ -189,17 +216,26 @@ void main() {
       expect(find.text('Quezon City'), findsOneWidget);
       expect(find.text('50% complete'), findsOneWidget);
       expect(find.byIcon(Icons.notifications_none_outlined), findsNothing);
-      expect(find.textContaining('DEMO DATA'), findsNothing);
+      expect(find.textContaining('Sample data'), findsNothing);
       await capture('authenticated-home');
       await showLabel(t, 'Under review: 1');
       expect(find.text('1 total application'), findsOneWidget);
       await showLabel(t, 'See all jobs');
       expect(
-        find.text('Live job listings are not connected yet.'),
+        find.text(
+          'Explore openings and compare work arrangements, skills and accessibility details.',
+        ),
         findsOneWidget,
       );
       expect(find.text('View job details'), findsNothing);
       await capture('authenticated-home-activity');
+      await tapLabel(t, 'See all jobs');
+      expect(find.text('Listings currently unavailable'), findsOneWidget);
+      await capture('authenticated-jobs');
+      await t.tap(find.text('Applications').last);
+      await t.pumpAndSettle();
+      expect(find.text('Application history unavailable'), findsOneWidget);
+      await capture('authenticated-applications');
     },
   );
 }

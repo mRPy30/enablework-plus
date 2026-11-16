@@ -1,4 +1,4 @@
-/// Presentation data for an explicitly offline seeker session.
+/// Shared presentation data. Offline records remain in the demo repository.
 class JobListing {
   const JobListing(
     this.id,
@@ -8,10 +8,18 @@ class JobListing {
     this.arrangement,
     this.employment,
     this.description,
-    this.accessibility,
-  );
+    this.accessibility, {
+    this.qualifications = '',
+    this.requiredSkills = const [],
+    this.acceptingApplications = true,
+    this.deadline,
+  });
   final String id, title, company, city, arrangement, employment, description;
   final List<String> accessibility;
+  final String qualifications;
+  final List<String> requiredSkills;
+  final bool acceptingApplications;
+  final DateTime? deadline;
 
   bool matches(String search, String? work) {
     final words = search.toLowerCase().trim().split(RegExp(r'\s+'));
@@ -26,10 +34,18 @@ class JobListing {
 }
 
 class SeekerApplication {
-  const SeekerApplication(this.job, this.resumeTitle, this.status, this.date);
+  const SeekerApplication(
+    this.job,
+    this.resumeTitle,
+    this.status,
+    this.date, {
+    this.id,
+    this.resumeId,
+  });
   final JobListing job;
   final String resumeTitle, status;
   final DateTime date;
+  final String? id, resumeId;
 }
 
 /// Never provided by the authenticated production workspace.

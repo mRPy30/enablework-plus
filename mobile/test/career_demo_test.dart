@@ -37,7 +37,12 @@ void main() {
         await t.pumpAndSettle();
       }
 
-      await tap('Open seeker demo');
+      expect(find.text('EnableWork+ · Sample data'), findsOneWidget);
+      expect(
+        find.textContaining(RegExp(r'demo', caseSensitive: false)),
+        findsNothing,
+      );
+      await tap('Get started');
       expect(
         t
             .widgetList<NavigationDestination>(
@@ -63,7 +68,7 @@ void main() {
       await t.tap(find.byType(BackButton));
       await t.pumpAndSettle();
       await tap('Sample resume 1');
-      await tap('Save demo application');
+      await tap('Save application');
       await tap('View application');
       expect(find.text('Sample resume 1'), findsOneWidget);
       expect(find.text('Submitted'), findsOneWidget);
@@ -73,8 +78,11 @@ void main() {
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      await tap('Exit demo');
-      await tap('Open seeker demo');
+      await tap('Settings');
+      await t.tap(find.byTooltip('Account options'));
+      await t.pumpAndSettle();
+      await tap('End session');
+      await tap('Get started');
       await tap('Applications');
       expect(find.text('No applications yet'), findsOneWidget);
     },
@@ -90,7 +98,7 @@ void main() {
       addTearDown(t.view.resetDevicePixelRatio);
       addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
       await t.pumpWidget(const ClientDemo());
-      final enter = find.text('Open seeker demo');
+      final enter = find.text('Get started');
       await t.ensureVisible(enter);
       await t.pumpAndSettle();
       await t.tap(enter);

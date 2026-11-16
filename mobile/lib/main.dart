@@ -12,6 +12,7 @@ import 'screens/auth_screen.dart';
 import 'screens/seeker_home.dart';
 import 'utils/preference_text_scaler.dart';
 import 'widgets/brand_identity.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,22 +121,12 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     }
   }
 
-  ThemeData _theme(Brightness brightness, {bool contrast = false}) => ThemeData(
-    useMaterial3: true,
-    materialTapTargetSize: MaterialTapTargetSize.padded,
-    visualDensity: VisualDensity.standard,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xff0038a8),
-      brightness: brightness,
-      contrastLevel: contrast ? 1 : 0,
-    ),
-    inputDecorationTheme: const InputDecorationTheme(
-      border: OutlineInputBorder(),
-    ),
-    splashFactory: _reduceMotion
-        ? NoSplash.splashFactory
-        : InkRipple.splashFactory,
-  );
+  ThemeData _theme(Brightness brightness, {bool contrast = false}) =>
+      AppTheme.forBrightness(
+        brightness,
+        highContrast: contrast,
+        reduceMotion: _reduceMotion,
+      );
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'EnableWork+',
@@ -168,7 +159,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         title: Text(
           widget.demoBuilder == null
               ? 'EnableWork+'
-              : 'DEMO DATA · EnableWork+',
+              : 'EnableWork+ · Sample data',
         ),
       ),
       body: SafeArea(

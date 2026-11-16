@@ -46,14 +46,14 @@ class _ClientDemoState extends State<ClientDemo> {
               const BrandIdentity(),
               const SizedBox(height: 24),
               const Text(
-                'Explore the job seeker workspace with fictional jobs and a sample resume. Changes last only for this demo.',
+                'Explore sample jobs and practice applying with a sample resume. Your changes last only for this session.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () => setState(() => _session = DemoWorkspace()),
                 icon: const Icon(Icons.arrow_forward),
-                label: const Text('Open seeker demo'),
+                label: const Text('Get started'),
               ),
             ],
           ),

@@ -101,7 +101,7 @@ class _ResumesScreenState extends State<ResumesScreen> {
       children: [
         if (widget.addSample != null)
           SectionCard(
-            title: 'Demo resumes',
+            title: 'Sample resumes',
             children: [
               const Text(
                 'Use a sample document for this session. No personal file is needed.',

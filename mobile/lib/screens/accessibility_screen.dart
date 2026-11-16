@@ -45,6 +45,15 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
     'simplified_language': 'Simplified language',
     'step_by_step_guidance': 'Step-by-step guidance',
   };
+  static const _needIcons = <String, IconData>{
+    'visual': Icons.visibility_outlined,
+    'mobility': Icons.accessible_forward,
+    'hearing': Icons.hearing_outlined,
+    'speech': Icons.record_voice_over_outlined,
+    'intellectual': Icons.psychology_outlined,
+    'learning': Icons.menu_book_outlined,
+    'psychosocial': Icons.self_improvement_outlined,
+  };
   final _scroll = ScrollController();
   late AccessibilityPreferences _basePreferences;
   late double _scale;
@@ -229,23 +238,30 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
         'These choices stay private. Choosing a need does not turn on any features.',
       ),
       for (final need in _needs.entries)
-        CheckboxListTile(
-          key: ValueKey('need_${need.key}'),
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: Text(need.value.$1),
-          subtitle: Text(need.value.$2),
-          value: _selectedNeeds.contains(need.key),
-          onChanged: _disabled
-              ? null
-              : (value) => setState(() {
-                  _dirty = true;
-                  if (value == true) {
-                    _selectedNeeds.add(need.key);
-                  } else {
-                    _selectedNeeds.remove(need.key);
-                  }
-                }),
+        Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          color: _selectedNeeds.contains(need.key)
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).colorScheme.surface,
+          child: CheckboxListTile(
+            key: ValueKey('need_${need.key}'),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            controlAffinity: ListTileControlAffinity.leading,
+            secondary: Icon(_needIcons[need.key]),
+            title: Text(need.value.$1),
+            subtitle: Text(need.value.$2),
+            value: _selectedNeeds.contains(need.key),
+            onChanged: _disabled
+                ? null
+                : (value) => setState(() {
+                    _dirty = true;
+                    if (value == true) {
+                      _selectedNeeds.add(need.key);
+                    } else {
+                      _selectedNeeds.remove(need.key);
+                    }
+                  }),
+          ),
         ),
       const SizedBox(height: 16),
       FilledButton(
@@ -375,13 +391,29 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
         controller: _scroll,
         padding: const EdgeInsets.all(16),
         children: [
+          if (widget.onboarding || _step >= 0)
+            CareerHeading(
+              widget.onboarding
+                  ? 'Personalise your experience'
+                  : 'Accessibility settings',
+            ),
           if (_step >= 0) ...[
-            Semantics(
-              liveRegion: true,
-              header: true,
-              child: Text(
-                'Step ${_step + 1} of 3',
-                style: Theme.of(context).textTheme.titleMedium,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Semantics(
+                liveRegion: true,
+                header: true,
+                child: Text(
+                  'Step ${_step + 1} of 3',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),

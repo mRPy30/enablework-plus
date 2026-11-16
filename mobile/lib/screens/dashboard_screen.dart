@@ -31,6 +31,17 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final jobs = demoJobs;
+    final colors = Theme.of(context).colorScheme;
+    final fullName = (data.profile.fields['full_name'] ?? '').trim();
+    final firstName = fullName.isEmpty
+        ? 'there'
+        : fullName.split(RegExp(r'\s+')).first;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 18
+        ? 'Good afternoon'
+        : 'Good evening';
     final applicationOverview = <Widget>[
       const _Heading('Application overview'),
       SectionCard(
@@ -42,7 +53,7 @@ class DashboardScreen extends StatelessWidget {
             Text(
               jobs == null
                   ? 'Your application activity will appear here after you apply.'
-                  : 'Save a demo application to see its status here.',
+                  : 'Your saved applications will appear here.',
             )
           else
             Wrap(
@@ -67,6 +78,26 @@ class DashboardScreen extends StatelessWidget {
       key: const PageStorageKey('seeker-dashboard'),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
+        CareerHeading('$greeting, $firstName'),
+        Text(
+          'Your next opportunity starts here.',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () => openTab(1),
+          icon: const Icon(Icons.search),
+          label: const Text('Search jobs, companies or skills'),
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xff14213d),
+            iconColor: const Color(0xff0038a8),
+            side: const BorderSide(color: Color(0xffd6deeb)),
+            alignment: Alignment.centerLeft,
+            minimumSize: const Size.fromHeight(56),
+          ),
+        ),
+        const SizedBox(height: 20),
         _ProfileCard(
           data: data,
           authenticated: jobs == null,
@@ -118,9 +149,16 @@ class DashboardScreen extends StatelessWidget {
                         side: BorderSide(
                           color: Theme.of(context).colorScheme.outlineVariant,
                         ),
-                        backgroundColor: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerLow,
+                        backgroundColor: icon == Icons.assignment_outlined
+                            ? colors.secondaryContainer
+                            : icon == Icons.description_outlined
+                            ? colors.tertiaryContainer
+                            : colors.primaryContainer,
+                        foregroundColor: icon == Icons.assignment_outlined
+                            ? colors.onSecondaryContainer
+                            : icon == Icons.description_outlined
+                            ? colors.onTertiaryContainer
+                            : colors.onPrimaryContainer,
                       ),
                       onPressed: action,
                       child: Row(
@@ -139,33 +177,19 @@ class DashboardScreen extends StatelessWidget {
         if (jobs == null) ...[
           ...applicationOverview,
           const _Heading('Job opportunities'),
-          Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.work_outline,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Listings unavailable',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('Live job listings are not connected yet.'),
-                  _Link('See all jobs', () => openTab(1)),
-                ],
+          SectionCard(
+            title: 'Find your next role',
+            children: [
+              const Text(
+                'Explore openings and compare work arrangements, skills and accessibility details.',
               ),
-            ),
+              _Link('See all jobs', () => openTab(1)),
+            ],
           ),
         ] else ...[
           const _Heading('Job opportunities'),
           if (jobs.isEmpty)
-            const Text('No demo jobs available.')
+            const Text('No sample listings available.')
           else
             for (final job in jobs.take(2))
               _JobCard(job: job, open: () => openJob!(job)),
@@ -380,7 +404,7 @@ class _JobCard extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
-                  'DEMO DATA',
+                  'Sample listing',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colors.onSecondaryContainer,
                     fontWeight: FontWeight.bold,

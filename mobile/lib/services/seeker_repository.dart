@@ -2,6 +2,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/seeker_workspace.dart';
+import '../models/career_preview.dart';
+import 'career_repository.dart';
 import 'auth_service.dart';
 
 abstract interface class PdfPicker {
@@ -71,13 +73,172 @@ abstract interface class SeekerRepository {
   Future<void> remove(String id);
 }
 
-class SupabaseSeekerRepository implements SeekerRepository, ResumeBackend {
+class SupabaseSeekerRepository
+    implements SeekerRepository, ResumeBackend, CareerRepository {
   SupabaseSeekerRepository(this.auth, this.userId);
   final AuthService auth;
   SupabaseClient get _client => auth.client;
   @override
   final String userId;
   final Map<String, String> _uploadPaths = {};
+
+  static const _jobFields =
+      'id,title,description,qualifications,required_skills,'
+      'city,province,work_arrangement,employment_type,accessibility_details,'
+      'status,application_deadline,employers!inner(company_name,is_active)';
+  static const _applicationFields =
+      'id,job_seeker_id,resume_id,status,submitted_at,'
+      'jobs($_jobFields),resumes(title)';
+
+  JobListing _job(Map<String, dynamic> row) {
+    final employer = row['employers'] as Map<String, dynamic>;
+    final deadline = row['application_deadline'] == null
+        ? null
+        : DateTime.parse(row['application_deadline'] as String);
+    final accessibility = (row['accessibility_details'] as String?)?.trim();
+    return JobListing(
+      row['id'] as String,
+      row['title'] as String,
+      employer['company_name'] as String,
+      [
+        row['city'],
+        row['province'],
+      ].whereType<String>().where((s) => s.isNotEmpty).join(', '),
+      row['work_arrangement'] as String,
+      row['employment_type'] as String,
+      row['description'] as String,
+      accessibility == null || accessibility.isEmpty
+          ? const []
+          : [accessibility],
+      qualifications: row['qualifications'] as String,
+      requiredSkills: List<String>.from(row['required_skills'] as List),
+      acceptingApplications:
+          row['status'] == 'published' &&
+          employer['is_active'] == true &&
+          (deadline == null || deadline.isAfter(DateTime.now().toUtc())),
+      deadline: deadline,
+    );
+  }
+
+  SeekerApplication _application(Map<String, dynamic> row) {
+    if (row['job_seeker_id'] != userId) {
+      throw const WorkspaceFailure('Please sign in again.', accessLost: true);
+    }
+    return SeekerApplication(
+      _job(Map<String, dynamic>.from(row['jobs'] as Map)),
+      (row['resumes'] as Map)['title'] as String,
+      row['status'] as String,
+      DateTime.parse(row['submitted_at'] as String),
+      id: row['id'] as String,
+      resumeId: row['resume_id'] as String,
+    );
+  }
+
+  @override
+  Future<List<JobListing>> loadJobs() => _run(() async {
+    final result = <JobListing>[];
+    final now = DateTime.now().toUtc().toIso8601String();
+    for (var offset = 0; ; offset += 100) {
+      await _guard();
+      final rows = await _client
+          .from('jobs')
+          .select(_jobFields)
+          .eq('status', 'published')
+          .eq('employers.is_active', true)
+          .or('application_deadline.is.null,application_deadline.gt.$now')
+          .order('published_at', ascending: false)
+          .order('id')
+          .range(offset, offset + 99);
+      result.addAll(rows.map(_job).where((job) => job.acceptingApplications));
+      if (rows.length < 100) return result;
+    }
+  });
+
+  @override
+  Future<JobListing> loadJob(String id) => _run(() async {
+    // No discovery filters: RLS deliberately permits an applicant's historical job.
+    final row = await _client
+        .from('jobs')
+        .select(_jobFields)
+        .eq('id', id)
+        .maybeSingle();
+    if (row == null) {
+      throw const WorkspaceFailure(
+        'This job is no longer available. Refresh the job list.',
+      );
+    }
+    return _job(row);
+  });
+
+  @override
+  Future<List<SeekerApplication>> loadApplications() => _run(() async {
+    final result = <SeekerApplication>[];
+    for (var offset = 0; ; offset += 100) {
+      await _guard();
+      final rows = await _client
+          .from('applications')
+          .select(_applicationFields)
+          .eq('job_seeker_id', userId)
+          .order('submitted_at', ascending: false)
+          .order('id')
+          .range(offset, offset + 99);
+      result.addAll(rows.map(_application));
+      if (rows.length < 100) return result;
+    }
+  });
+
+  @override
+  Future<SeekerApplication?> findApplication(String jobId) => _run(() async {
+    final row = await _client
+        .from('applications')
+        .select(_applicationFields)
+        .eq('job_seeker_id', userId)
+        .eq('job_id', jobId)
+        .maybeSingle();
+    return row == null ? null : _application(row);
+  });
+
+  @override
+  Future<SeekerApplication> submitApplication(
+    String jobId,
+    String resumeId,
+  ) async {
+    // Reconcile first, including after a previous timeout. Never retry a POST blindly.
+    final existing = await findApplication(jobId);
+    if (existing != null) return existing;
+    await _guard();
+    try {
+      await _client.rpc(
+        'submit_application',
+        params: {'p_job_id': jobId, 'p_resume_id': resumeId},
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == '23514') {
+        throw const WorkspaceFailure(
+          'This job is no longer accepting applications. Refresh its details.',
+        );
+      }
+      if (e.code == '42501') {
+        await _guard();
+        throw const WorkspaceFailure(
+          'Select an available resume belonging to your account.',
+        );
+      }
+      if (['PGRST301', 'PGRST302'].contains(e.code)) {
+        throw const WorkspaceFailure('Please sign in again.', accessLost: true);
+      }
+      // Duplicate or server/transport failure: confirm the outcome by reading.
+    } catch (_) {
+      // Do not repeat the submission when the response is lost.
+    }
+    try {
+      final result = await findApplication(jobId);
+      if (result != null) return result;
+    } on WorkspaceFailure catch (e) {
+      if (e.accessLost) rethrow;
+    }
+    throw const SubmissionUncertain();
+  }
 
   Future<void> _guard() async {
     if (auth.userId != userId) {

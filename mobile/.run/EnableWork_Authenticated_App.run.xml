@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="EnableWork+ Authenticated App" type="FlutterRunConfigurationType" factoryName="Flutter">
+    <option name="filePath" value="$PROJECT_DIR$/lib/main.dart" />
+    <option name="additionalArgs" value="--no-pub --dart-define-from-file=../config/local/mobile.json" />
+    <method v="2" />
+  </configuration>
+</component>

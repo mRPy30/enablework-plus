@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Approved identity. White backing preserves contrast in either app theme.
+/// Approved identity. The source PNG has a genuine alpha channel, so the
+/// artwork can sit on both light and branded surfaces without a baked box.
 class BrandIdentity extends StatelessWidget {
   const BrandIdentity({super.key});
 
@@ -12,12 +13,9 @@ class BrandIdentity extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 340),
-          child: ColoredBox(
-            color: Colors.white,
-            child: Image.asset(
-              'assets/branding/enablework-plus-logo.png',
-              fit: BoxFit.contain,
-            ),
+          child: Image.asset(
+            'assets/branding/enablework-plus-logo.png',
+            fit: BoxFit.contain,
           ),
         ),
       ),
@@ -31,15 +29,18 @@ class BrandSplash extends StatelessWidget {
   const BrandSplash({super.key});
 
   @override
-  Widget build(BuildContext context) => const MaterialApp(
+  Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(24),
-            child: BrandIdentity(),
+    theme: Theme.of(context),
+    home: Builder(
+      builder: (context) => Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: const BrandIdentity(),
+            ),
           ),
         ),
       ),

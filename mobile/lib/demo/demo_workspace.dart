@@ -49,7 +49,7 @@ class DemoWorkspace implements SeekerRepository, CareerPreview {
     userId: 'demo-seeker',
     updatedAt: '0',
     fields: {
-      'full_name': 'Demo Seeker',
+      'full_name': 'Alex Reyes',
       'headline': 'Office support trainee',
       'skills': 'Cataloging, data entry',
       'city': 'Quezon City',

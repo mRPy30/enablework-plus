@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="EnableWork+ Offline Demo" type="FlutterRunConfigurationType" factoryName="Flutter">
+    <option name="filePath" value="$PROJECT_DIR$/lib/main_demo.dart" />
+    <option name="additionalArgs" value="--no-pub" />
+    <method v="2" />
+  </configuration>
+</component>

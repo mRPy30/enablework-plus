@@ -67,15 +67,28 @@ void main() {
         );
         enteredPatch?.complete();
         if (releasePatch != null) await releasePatch!.future;
-        request.response.write(
-          jsonEncode(
-            conflict
-                ? []
-                : [
-                    {'user_id': 'dummy-a'},
-                  ],
-          ),
+        // PATCH + maybeSingle requests PostgREST's singular representation.
+        expect(
+          request.headers.value('accept'),
+          'application/vnd.pgrst.object+json',
         );
+        request.response.headers.set(
+          'content-type',
+          'application/vnd.pgrst.object+json',
+        );
+        if (conflict) {
+          request.response.statusCode = 406;
+          request.response.write(
+            jsonEncode({
+              'code': 'PGRST116',
+              'message': 'Cannot coerce the result to a single JSON object',
+              'details': 'Results contain 0 rows',
+              'hint': null,
+            }),
+          );
+        } else {
+          request.response.write(jsonEncode({'user_id': 'dummy-a'}));
+        }
       } else {
         request.response.write(jsonEncode({'updated_at': version}));
       }

@@ -36,7 +36,7 @@ Future<void> enterDemo(
   addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
   await t.pumpWidget(RepaintBoundary(key: boundary, child: const ClientDemo()));
   await t.pumpAndSettle();
-  final enter = find.text('Open seeker demo');
+  final enter = find.text('Get started');
   await reveal(t, enter);
   await t.tap(enter);
   await t.pumpAndSettle();
@@ -71,7 +71,7 @@ void main() {
       await reveal(t, resumes);
       await t.tap(resumes);
       await t.pumpAndSettle();
-      expect(find.text('Demo resumes'), findsOneWidget);
+      expect(find.text('Sample resumes'), findsOneWidget);
       await t.tap(find.byType(BackButton));
       await t.pumpAndSettle();
       final details = find.text('View job details');
@@ -125,22 +125,27 @@ void main() {
 
       await show([]);
       expect(find.text('67% complete'), findsOneWidget);
-      expect(find.text('DS'), findsOneWidget);
-      await reveal(t, find.text('No demo jobs available.'));
+      expect(find.text('AR'), findsOneWidget);
+      await reveal(t, find.text('No sample listings available.'));
       await reveal(t, find.text('0 total applications'));
       expect(
-        find.text('Save a demo application to see its status here.'),
+        find.text('Your saved applications will appear here.'),
         findsOneWidget,
       );
       session.savePreview(job, 'sample');
       await show([withoutDetails]);
       await reveal(t, find.text('Workplace accessibility: Not provided'));
-      expect(find.text('DEMO DATA'), findsOneWidget);
+      expect(find.text('Sample listing'), findsOneWidget);
       await reveal(t, find.text('Submitted: 1'));
       expect(find.text('1 total application'), findsOneWidget);
       await show(null);
-      await reveal(t, find.text('Live job listings are not connected yet.'));
-      expect(find.text('DEMO DATA'), findsNothing);
+      await reveal(
+        t,
+        find.text(
+          'Explore openings and compare work arrangements, skills and accessibility details.',
+        ),
+      );
+      expect(find.text('Sample listing'), findsNothing);
     },
   );
 
@@ -148,7 +153,10 @@ void main() {
     '360-wide Home reflows at double text size with accessible actions',
     (t) async {
       await enterDemo(t, width: 360, scale: 2);
-      expect(find.text('Welcome, Demo Seeker'), findsOneWidget);
+      expect(
+        find.textContaining(RegExp(r'Good (morning|afternoon|evening), Alex')),
+        findsOneWidget,
+      );
       for (final label in [
         'Profile readiness',
         'Quick actions',
@@ -208,7 +216,7 @@ void main() {
     expect(find.text('Catalog assistant'), findsOneWidget);
     expect(find.text('Paper Lantern Studio · Quezon City'), findsOneWidget);
     expect(find.text('Part-time · Hybrid'), findsOneWidget);
-    expect(find.text('DEMO DATA'), findsWidgets);
+    expect(find.text('Sample listing'), findsWidgets);
     await capture('opportunities');
     await reveal(t, find.text('See all applications'));
     expect(find.text('Records assistant'), findsNothing);
