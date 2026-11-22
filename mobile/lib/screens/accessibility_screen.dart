@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/seeker_workspace.dart';
 import '../state/seeker_controller.dart';
@@ -17,6 +18,97 @@ class AccessibilityScreen extends StatefulWidget {
   final bool onboarding, active;
   @override
   State<AccessibilityScreen> createState() => _AccessibilityScreenState();
+}
+
+/// Copyable communication prompts for sign-language users. Live camera
+/// translation is intentionally not presented as operational yet.
+class SignLanguageSupportScreen extends StatelessWidget {
+  const SignLanguageSupportScreen({super.key});
+
+  static const _phrases = <(String, String)>[
+    ('Hello', 'Hello. Thank you for connecting with me.'),
+    ('I need help', 'I need help with this step.'),
+    ('Written communication', 'I prefer written communication, please.'),
+    ('Please repeat', 'Please repeat that more slowly.'),
+    ('Accessibility support', 'I need an accessibility accommodation.'),
+  ];
+
+  Future<void> _copy(BuildContext context, String phrase) async {
+    await Clipboard.setData(ClipboardData(text: phrase));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phrase copied to clipboard.')),
+      );
+    }
+  }
+
+  void _showModelStatus(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('FSL recognition is not connected'),
+        content: const Text(
+          'The camera model is not enabled in this build. No sign is interpreted or stored. A validated Filipino Sign Language model and consent review are required before activation.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      const CareerHeading('Sign language support'),
+      const Text('Use these ready-to-share phrases during job search, interviews, or support conversations.'),
+      const SizedBox(height: 12),
+      SectionCard(
+        title: 'FSL live camera',
+        children: [
+          const Text(
+            'This section will use your camera to recognize Filipino Sign Language and describe the result in plain text. Camera access and recognition are off until the validated model is connected.',
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => _showModelStatus(context),
+            icon: const Icon(Icons.videocam_outlined, size: 28),
+            label: const Text('Check camera recognition status'),
+          ),
+        ],
+      ),
+      SectionCard(
+        title: 'Communication phrases',
+        children: [
+          for (final (label, phrase) in _phrases)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              minVerticalPadding: 10,
+              leading: const Icon(Icons.sign_language_outlined, size: 32),
+              title: Text(label),
+              subtitle: Text(phrase),
+              trailing: IconButton(
+                tooltip: 'Copy phrase',
+                icon: const Icon(Icons.copy_outlined, size: 28),
+                onPressed: () => _copy(context, phrase),
+              ),
+            ),
+        ],
+      ),
+      SectionCard(
+        title: 'Live translation status',
+        children: [
+          const Icon(Icons.videocam_off_outlined, size: 42),
+          const SizedBox(height: 8),
+          const Text('Live camera sign-language translation is not enabled yet. It requires a validated model, consent flow, and privacy review.'),
+        ],
+      ),
+    ],
+  );
 }
 
 class _AccessibilityScreenState extends State<AccessibilityScreen> {
@@ -387,10 +479,14 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
           _cancel();
         }
       },
-      child: ListView(
+      child: Scrollbar(
         controller: _scroll,
-        padding: const EdgeInsets.all(16),
-        children: [
+        thumbVisibility: true,
+        interactive: true,
+        child: ListView(
+          controller: _scroll,
+          padding: const EdgeInsets.fromLTRB(16, 16, 24, 24),
+          children: [
           if (widget.onboarding || _step >= 0)
             CareerHeading(
               widget.onboarding
@@ -445,7 +541,8 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
             onPressed: _disabled ? null : _cancel,
             child: const Text('Cancel'),
           ),
-        ],
+          ],
+        ),
       ),
     ),
   );

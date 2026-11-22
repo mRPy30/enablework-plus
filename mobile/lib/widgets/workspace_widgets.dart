@@ -24,12 +24,24 @@ class BusyIndicator extends StatelessWidget {
 }
 
 class SectionCard extends StatelessWidget {
-  const SectionCard({required this.title, required this.children, super.key});
+  const SectionCard({
+    required this.title,
+    required this.children,
+    this.borderless = false,
+    super.key,
+  });
   final String title;
   final List<Widget> children;
+  final bool borderless;
   @override
   Widget build(BuildContext context) => Card(
     margin: const EdgeInsets.only(bottom: 16),
+    shape: borderless
+        ? RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.card),
+            side: BorderSide.none,
+          )
+        : null,
     child: Padding(
       padding: const EdgeInsets.all(AppSpacing.card),
       child: Column(

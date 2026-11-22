@@ -391,12 +391,43 @@ class PickedPdf {
   }
 }
 
+class PickedImage {
+  PickedImage(
+    Uint8List bytes, {
+    required this.extension,
+    required this.contentType,
+  }) : bytes = Uint8List.fromList(bytes) {
+    validate();
+  }
+  static const maxBytes = 20 * 1024 * 1024;
+  final Uint8List bytes;
+  final String extension;
+  final String contentType;
+  void validate() {
+    if (bytes.isEmpty || bytes.length > maxBytes) {
+      throw const WorkspaceFailure('Choose an image no larger than 20 MB.');
+    }
+    const allowed = {'jpg', 'jpeg', 'png', 'webp'};
+    if (!allowed.contains(extension.toLowerCase()) ||
+        !{'image/jpeg', 'image/png', 'image/webp'}.contains(contentType)) {
+      throw const WorkspaceFailure('Choose a JPEG, PNG, or WebP image.');
+    }
+  }
+}
+
+class ProfilePhoto {
+  const ProfilePhoto({required this.url, required this.sizeBytes});
+  final String url;
+  final int sizeBytes;
+}
+
 class SeekerWorkspace {
   SeekerWorkspace({
     required this.profile,
     required this.preferences,
     required List<ResumeRecord> resumes,
     required Map<String, int> applicationCounts,
+    this.profilePhoto,
   }) : resumes = List.unmodifiable(resumes),
        applicationCounts = Map.unmodifiable({
          for (final key in applicationStatusLabels.keys)
@@ -406,6 +437,7 @@ class SeekerWorkspace {
   final AccessibilityPreferences preferences;
   final List<ResumeRecord> resumes;
   final Map<String, int> applicationCounts;
+  final ProfilePhoto? profilePhoto;
   int get totalApplications =>
       applicationCounts.values.fold(0, (a, b) => a + b);
   ResumeRecord? get currentResume {

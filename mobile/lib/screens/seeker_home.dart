@@ -16,6 +16,7 @@ import 'accessibility_screen.dart';
 import 'candidate_support_screen.dart';
 import '../services/resume_scan_repository.dart';
 import '../services/job_match_repository.dart';
+import '../widgets/ai_assistant_sheet.dart';
 
 class SeekerHome extends StatefulWidget {
   const SeekerHome({
@@ -172,11 +173,32 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
     }
   }
 
+  void _openAssistant() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => AiAssistantSheet(
+        matchingAvailable: widget.repository is JobMatchRepository,
+        onScanResume: () { Navigator.pop(sheetContext); _resumes(); },
+        onFindMatch: () { Navigator.pop(sheetContext); _tabTo(1); },
+        onBuildResume: () { Navigator.pop(sheetContext); _resumes(); },
+        onAccessibility: () { Navigator.pop(sheetContext); _tabTo(4); },
+        onSignLanguage: () {
+          Navigator.pop(sheetContext);
+          _open(() => const SignLanguageSupportScreen());
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _controller,
-    builder: (context, _) => Column(
+    builder: (context, _) => Stack(
       children: [
+        Column(
+          children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
@@ -378,6 +400,22 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
                 tooltip: 'Accessibility preferences',
               ),
             ],
+          ),
+          ],
+        ),
+        if (_controller.data?.preferences.preferencesReviewed ?? false)
+          Positioned(
+            right: 16,
+            bottom: 96,
+            child: FloatingActionButton.extended(
+              heroTag: 'enablework-assistant',
+              onPressed: _busy ? null : _openAssistant,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Assistant'),
+              tooltip: 'Open EnableWork+ Assistant',
+            ),
           ),
       ],
     ),

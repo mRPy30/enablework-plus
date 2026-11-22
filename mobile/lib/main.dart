@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -131,6 +132,12 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) => MaterialApp(
     title: 'EnableWork+',
     debugShowCheckedModeBanner: false,
+    scrollBehavior: const MaterialScrollBehavior().copyWith(
+      dragDevices: {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+      },
+    ),
     theme: _theme(Brightness.light, contrast: _preferences.highContrast),
     darkTheme: _theme(Brightness.dark, contrast: _preferences.highContrast),
     highContrastTheme: _theme(Brightness.light, contrast: true),

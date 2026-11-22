@@ -106,11 +106,12 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         color: scheme.surface,
         surfaceTintColor: Colors.transparent,
-        elevation: dark ? 1 : 0,
+        elevation: dark ? 2 : 2,
+        shadowColor: dark ? Colors.black54 : Colors.black12,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.card),
-          side: BorderSide(color: scheme.outlineVariant),
+          side: BorderSide.none,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -122,6 +123,8 @@ abstract final class AppTheme {
           ),
           backgroundColor: AppColors.royalBlue,
           foregroundColor: Colors.white,
+          elevation: 2,
+          shadowColor: Colors.black26,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -131,6 +134,9 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
+          side: BorderSide.none,
+          elevation: 1,
+          shadowColor: Colors.black12,
         ),
       ),
       textButtonTheme: TextButtonThemeData(

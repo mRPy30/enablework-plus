@@ -10,38 +10,58 @@ class DemoWorkspace implements SeekerRepository, CareerPreview {
   @override
   final jobs = const [
     JobListing(
-      'catalog',
-      'Catalog assistant',
-      'Paper Lantern Studio',
-      'Quezon City',
+      'filinvest-support',
+      '[DEMO DATA] Customer support associate',
+      'Filinvest-area Demo Employer',
+      'Muntinlupa / remote',
       'hybrid',
-      'part_time',
-      'Organize product listings, check descriptions and prepare weekly catalog updates.',
+      'full_time',
+      'Demo posting for client presentation only. Respond to customer questions through email and chat, document requests, and coordinate accessible service support.',
       [
         'Step-free entrance',
-        'Written task instructions',
-        'Adjustable workstation',
+        'Chat-based communication',
+        'Captioned team meetings',
       ],
     ),
     JobListing(
-      'support',
-      'Customer support associate',
-      'Bayline Services',
-      'Cebu City',
+      'concentrix-qa',
+      '[DEMO DATA] Quality assurance assistant',
+      'Alabang Demo Contact Center',
+      'Alabang, Muntinlupa',
       'remote',
       'full_time',
-      'Help customers by email and chat. Work with a small team to resolve delivery questions.',
-      ['Chat-based communication', 'Captioned team meetings'],
+      'Demo posting for client presentation only. Review support records, document quality findings, and prepare clear written feedback for a remote team.',
+      ['Written task instructions', 'Flexible break scheduling', 'Remote-first setup'],
     ),
     JobListing(
-      'records',
-      'Records assistant',
-      'South Loop Archive',
-      'Pasig',
+      'filinvest-records',
+      '[DEMO DATA] Records and data assistant',
+      'Filinvest-area Demo Employer',
+      'Filinvest City, Muntinlupa',
       'onsite',
       'full_time',
-      'Index incoming records, check digital files and maintain the team’s document register.',
-      ['Step-free entrance', 'Accessible restroom'],
+      'Demo posting for client presentation only. Organize digital records, check data quality, and maintain an accessible document register.',
+      ['Step-free entrance', 'Accessible restroom', 'Adjustable workstation'],
+    ),
+    JobListing(
+      'alabang-web',
+      '[DEMO DATA] Junior web support specialist',
+      'Alabang Technology Demo Employer',
+      'Muntinlupa / hybrid',
+      'hybrid',
+      'part_time',
+      'Demo posting for client presentation only. Help maintain accessible web content, reproduce issues, and write clear support notes for the product team.',
+      ['Keyboard-friendly tools', 'Written communication', 'Flexible schedule'],
+    ),
+    JobListing(
+      'muntinlupa-admin',
+      '[DEMO DATA] Administrative coordinator',
+      'Muntinlupa Business Demo Employer',
+      'Muntinlupa',
+      'onsite',
+      'full_time',
+      'Demo posting for client presentation only. Coordinate calendars, prepare documents, and support an inclusive office operations team.',
+      ['Step-free entrance', 'Accessible restroom', 'Quiet workspace option'],
     ),
   ];
   final _applications = <SeekerApplication>[];
@@ -65,6 +85,10 @@ class DemoWorkspace implements SeekerRepository, CareerPreview {
     ),
   ];
   var _sequence = 0;
+  @override
+  Future<void> uploadProfilePhoto(PickedImage image) async {
+    throw const WorkspaceFailure('Profile photos are unavailable in this preview.');
+  }
   @override
   Future<SeekerWorkspace> load() async => SeekerWorkspace(
     profile: _profile,

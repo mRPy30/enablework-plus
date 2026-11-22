@@ -66,6 +66,7 @@ abstract interface class SeekerRepository {
   Future<SeekerWorkspace> load();
   Future<void> saveProfile(SeekerProfile profile);
   Future<void> savePreferences(AccessibilityPreferences preferences);
+  Future<void> uploadProfilePhoto(PickedImage image);
   Future<void> upload(
     String title,
     PickedPdf file,
@@ -414,6 +415,7 @@ class SupabaseSeekerRepository
           .single(),
       _listResumes(),
       _client.rpc('my_application_counts'),
+      _client.from('profile_photos').select('storage_path,size_bytes').eq('user_id', userId).maybeSingle(),
     ]);
     final profile = SeekerProfile.fromJson(
       Map<String, dynamic>.from(values[0] as Map),
@@ -430,6 +432,14 @@ class SupabaseSeekerRepository
       }
       counts[status] = total;
     }
+    ProfilePhoto? photo;
+    final photoRow = values[4] as Map<String, dynamic>?;
+    if (photoRow != null) {
+      final url = await _client.storage.from('profile-photos').createSignedUrl(
+        photoRow['storage_path'] as String, 3600,
+      );
+      photo = ProfilePhoto(url: url, sizeBytes: (photoRow['size_bytes'] as num).toInt());
+    }
     return SeekerWorkspace(
       profile: profile,
       preferences: AccessibilityPreferences.fromJson(
@@ -437,7 +447,29 @@ class SupabaseSeekerRepository
       ),
       resumes: values[2] as List<ResumeRecord>,
       applicationCounts: counts,
+      profilePhoto: photo,
     );
+  });
+
+  @override
+  Future<void> uploadProfilePhoto(PickedImage image) => _run(() async {
+    image.validate();
+    final path = '$userId/avatar';
+    await _client.storage.from('profile-photos').uploadBinary(
+      path,
+      image.bytes,
+      fileOptions: FileOptions(contentType: image.contentType, upsert: true),
+    );
+    try {
+      await _client.rpc('set_my_profile_photo', params: {
+        'p_storage_path': path,
+        'p_content_type': image.contentType,
+        'p_size_bytes': image.bytes.length,
+      });
+    } catch (_) {
+      try { await _client.storage.from('profile-photos').remove([path]); } catch (_) {}
+      rethrow;
+    }
   });
   Future<List<ResumeRecord>> _listResumes() async {
     final result = <ResumeRecord>[];

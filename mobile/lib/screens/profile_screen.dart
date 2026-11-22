@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../models/seeker_workspace.dart';
@@ -159,6 +161,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickPhoto() async {
+    final picked = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    if (picked == null || picked.path == null) return;
+    final ext = picked.extension.toLowerCase();
+    final contentType = ext == 'png'
+        ? 'image/png'
+        : ext == 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+    final image = PickedImage(
+      await File(picked.path!).readAsBytes(),
+      extension: ext,
+      contentType: contentType,
+    );
+    final saved = await widget.controller.uploadProfilePhoto(image);
+    if (!mounted) return;
+    if (saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Form(
     key: _form,
@@ -174,6 +202,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        SectionCard(
+          title: 'Profile photo',
+          children: [
+            Center(
+              child: CircleAvatar(
+                radius: 52,
+                backgroundImage: widget.controller.data?.profilePhoto == null
+                    ? null
+                    : NetworkImage(widget.controller.data!.profilePhoto!.url),
+                child: widget.controller.data?.profilePhoto == null
+                    ? const Icon(Icons.person, size: 48)
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text('JPEG, PNG, or WebP up to 20 MB. Stored privately and visible only to you.'),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: widget.controller.busy ? null : _pickPhoto,
+              icon: const Icon(Icons.photo_camera),
+              label: const Text('Choose profile photo'),
+            ),
+          ],
+        ),
         SectionCard(
           title: 'Personal details',
           children: [

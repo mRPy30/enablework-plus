@@ -38,6 +38,11 @@ class FakeRepository implements SeekerRepository {
   Completer<void>? preferenceSaveGate;
   Completer<SeekerWorkspace>? pendingLoad;
   @override
+  Future<void> uploadProfilePhoto(PickedImage image) async {
+    image.validate();
+    if (fail != null) throw fail!;
+  }
+  @override
   Future<SeekerWorkspace> load() async {
     if (fail != null) throw fail!;
     return pendingLoad == null ? value : pendingLoad!.future;

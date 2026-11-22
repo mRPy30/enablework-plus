@@ -45,6 +45,7 @@ class DashboardScreen extends StatelessWidget {
     final applicationOverview = <Widget>[
       const _Heading('Application overview'),
       SectionCard(
+        borderless: true,
         title: data.totalApplications == 1
             ? '1 total application'
             : '${data.totalApplications} total applications',
@@ -92,7 +93,7 @@ class DashboardScreen extends StatelessWidget {
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xff14213d),
             iconColor: const Color(0xff0038a8),
-            side: const BorderSide(color: Color(0xffd6deeb)),
+            side: BorderSide.none,
             alignment: Alignment.centerLeft,
             minimumSize: const Size.fromHeight(56),
           ),
@@ -146,9 +147,7 @@ class DashboardScreen extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        side: BorderSide(
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
+                        side: BorderSide.none,
                         backgroundColor: icon == Icons.assignment_outlined
                             ? colors.secondaryContainer
                             : icon == Icons.description_outlined
@@ -178,6 +177,7 @@ class DashboardScreen extends StatelessWidget {
           ...applicationOverview,
           const _Heading('Job opportunities'),
           SectionCard(
+            borderless: true,
             title: 'Find your next role',
             children: [
               const Text(
@@ -231,7 +231,10 @@ class _ProfileCard extends StatelessWidget {
             .join(', ');
     return Card(
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide.none,
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -111,6 +111,8 @@ class SeekerController extends ChangeNotifier {
 
   Future<bool> saveProfile(SeekerProfile value) =>
       _mutate(() => repository.saveProfile(value));
+  Future<bool> uploadProfilePhoto(PickedImage image) =>
+      _mutate(() => repository.uploadProfilePhoto(image), label: 'Uploading profile photo');
   Future<bool> savePreferences(AccessibilityPreferences value) {
     if (data == null) return Future.value(false);
     final merged = value.mergeOnto(data!.preferences);
