@@ -167,7 +167,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
     );
     if (picked == null || picked.path == null) return;
-    final ext = picked.extension.toLowerCase();
+    final ext = (picked.extension ?? '').toLowerCase();
+    if (ext.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not determine the image type. Choose a JPG, PNG, or WebP file.')),
+        );
+      }
+      return;
+    }
     final contentType = ext == 'png'
         ? 'image/png'
         : ext == 'webp'
