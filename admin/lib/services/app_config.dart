@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-/// Local development only. These are public client settings, not server secrets.
+/// Approved local/hosted endpoints. Only public client keys belong here.
 class AppConfig {
   const AppConfig({
     required this.url,
@@ -19,25 +19,31 @@ class AppConfig {
 
   static AppConfig validate(String url, String key, String redirect) {
     final endpoint = Uri.tryParse(url);
-    if (endpoint == null ||
-        endpoint.scheme != 'http' ||
-        !const [
+    final approvedHosted =
+        endpoint?.scheme == 'https' &&
+        endpoint?.host == 'kqcbitrjvucsfkmwkwmj.supabase.co' &&
+        endpoint?.port == 443;
+    final approvedLocal =
+        endpoint?.scheme == 'http' &&
+        const [
           '127.0.0.1',
           'localhost',
           '10.0.2.2',
           '::1',
-        ].contains(endpoint.host) ||
-        endpoint.port != 54321 ||
+        ].contains(endpoint?.host) &&
+        endpoint?.port == 54321;
+    if (endpoint == null ||
+        !(approvedHosted || approvedLocal) ||
         endpoint.userInfo.isNotEmpty ||
         endpoint.hasQuery ||
         endpoint.hasFragment ||
         !const ['', '/'].contains(endpoint.path)) {
       throw const FormatException(
-        'Use the approved local Supabase API on port 54321.',
+        'Use the approved EnableWork+ Supabase endpoint.',
       );
     }
     if (key.isEmpty || key.contains('YOUR_') || key.startsWith('sb_secret_')) {
-      throw const FormatException('A local public client key is required.');
+      throw const FormatException('A public client key is required.');
     }
     // Defense against accidentally packaging legacy service-role JWTs. Never use
     // decoded client claims to authorize a user; database RLS is authoritative.

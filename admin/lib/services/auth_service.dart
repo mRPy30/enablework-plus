@@ -44,6 +44,9 @@ class AuthService {
 
   Future<void> updatePassword(String password) async {
     await requireAccess();
+    if (password.length < 12) {
+      throw const AuthException('Password too short', code: 'weak_password');
+    }
     await client.auth.updateUser(UserAttributes(password: password));
   }
 

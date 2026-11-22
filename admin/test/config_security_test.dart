@@ -14,7 +14,25 @@ void main() {
     expect(config.url, endpoint);
     expect(config.redirectUrl, callback);
   });
-  test('hosted database endpoints cannot be enabled in local-only builds', () {
+  test('only the approved HTTPS hosted project is accepted', () {
+    const hosted = 'https://kqcbitrjvucsfkmwkwmj.supabase.co';
+    expect(AppConfig.validate(hosted, publicTestKey, callback).url, hosted);
+    for (final url in [
+      'http://kqcbitrjvucsfkmwkwmj.supabase.co',
+      '$hosted.evil.test',
+      '$hosted:8443',
+      '$hosted/rest/v1',
+      '$hosted?key=value',
+      '$hosted#fragment',
+      'https://user@kqcbitrjvucsfkmwkwmj.supabase.co',
+    ]) {
+      expect(
+        () => AppConfig.validate(url, publicTestKey, callback),
+        throwsFormatException,
+      );
+    }
+  });
+  test('unapproved endpoints are rejected', () {
     expect(
       () => AppConfig.validate(
         'https://example.supabase.co',

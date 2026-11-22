@@ -13,6 +13,7 @@ import 'dashboard_screen.dart';
 import 'profile_screen.dart';
 import 'resumes_screen.dart';
 import 'accessibility_screen.dart';
+import 'candidate_support_screen.dart';
 
 class SeekerHome extends StatefulWidget {
   const SeekerHome({
@@ -46,6 +47,10 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
   bool get _busy => _controller.busy || _careerBusy;
   CareerRepository? get _career => widget.repository is CareerRepository
       ? widget.repository as CareerRepository
+      : null;
+  CandidateSupportRepository? get _support =>
+      widget.repository is CandidateSupportRepository
+      ? widget.repository as CandidateSupportRepository
       : null;
   final _pages = <Widget Function()>[];
   void _open(Widget Function() page) {
@@ -116,7 +121,7 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
           _revision++;
           _tab = 2;
           _pages.clear();
-          _pages.add(() => ApplicationDetails(application));
+          _pages.add(() => ApplicationDetails(application, support: _support));
         });
         _controller.load();
       },
@@ -267,7 +272,9 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
                               preview: preview,
                               revision: _revision,
                               browse: () => _tabTo(1),
-                              onOpen: (a) => _open(() => ApplicationDetails(a)),
+                              onOpen: (a) => _open(
+                                () => ApplicationDetails(a, support: _support),
+                              ),
                             ),
                           ] else ...[
                             DashboardScreen.authenticated(
@@ -293,8 +300,10 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
                                 revision: _revision,
                                 browse: () => _tabTo(1),
                                 onAccessLost: widget.onAccessLost,
-                                onOpen: (a) =>
-                                    _open(() => ApplicationDetails(a)),
+                                onOpen: (a) => _open(
+                                  () =>
+                                      ApplicationDetails(a, support: _support),
+                                ),
                               )
                             else
                               const _UnavailableCareerTab(

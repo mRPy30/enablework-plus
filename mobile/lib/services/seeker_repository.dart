@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/seeker_workspace.dart';
 import '../models/career_preview.dart';
 import 'career_repository.dart';
+import '../screens/candidate_support_screen.dart';
 import 'auth_service.dart';
 
 abstract interface class PdfPicker {
@@ -74,7 +75,11 @@ abstract interface class SeekerRepository {
 }
 
 class SupabaseSeekerRepository
-    implements SeekerRepository, ResumeBackend, CareerRepository {
+    implements
+        SeekerRepository,
+        ResumeBackend,
+        CareerRepository,
+        CandidateSupportRepository {
   SupabaseSeekerRepository(this.auth, this.userId);
   final AuthService auth;
   SupabaseClient get _client => auth.client;
@@ -239,6 +244,85 @@ class SupabaseSeekerRepository
     }
     throw const SubmissionUncertain();
   }
+
+  @override
+  Future<List<CandidateMessage>> messages(String applicationId) =>
+      _run(() async {
+        final rows = await _client
+            .from('application_messages')
+            .select('body,sender_id,created_at')
+            .eq('application_id', applicationId)
+            .order('created_at');
+        return rows
+            .map(
+              (r) => CandidateMessage(
+                r['body'] as String,
+                DateTime.parse(r['created_at'] as String),
+                fromAdministrator: r['sender_id'] != userId,
+              ),
+            )
+            .toList();
+      });
+  @override
+  Future<List<InterviewAppointment>> interviews(String applicationId) =>
+      _run(() async {
+        final rows = await _client
+            .from('interviews')
+            .select('scheduled_at,location_or_link,status,accessibility_notes')
+            .eq('application_id', applicationId)
+            .order('scheduled_at');
+        return rows
+            .map(
+              (r) => InterviewAppointment(
+                DateTime.parse(r['scheduled_at'] as String),
+                r['location_or_link'] as String,
+                r['status'] as String,
+                accessibilityNotes: r['accessibility_notes'] as String?,
+              ),
+            )
+            .toList();
+      });
+  @override
+  Future<List<AccommodationRequest>> requests(String applicationId) =>
+      _run(() async {
+        final rows = await _client
+            .from('accommodation_requests')
+            .select('request_type,details,status,admin_note')
+            .eq('application_id', applicationId)
+            .order('created_at', ascending: false);
+        return rows
+            .map(
+              (r) => AccommodationRequest(
+                r['request_type'] as String,
+                r['details'] as String,
+                r['status'] as String,
+                adminNote: r['admin_note'] as String?,
+              ),
+            )
+            .toList();
+      });
+  @override
+  Future<void> sendMessage(String applicationId, String message) =>
+      _run(() async {
+        await _client.from('application_messages').insert({
+          'application_id': applicationId,
+          'sender_id': userId,
+          'body': message,
+        });
+      });
+  @override
+  Future<void> requestAccommodation(
+    String applicationId,
+    String type,
+    String details,
+  ) => _run(() async {
+    await _client.from('accommodation_requests').insert({
+      'application_id': applicationId,
+      'job_seeker_id': userId,
+      'request_type': type,
+      'details': details,
+    });
+  });
 
   Future<void> _guard() async {
     if (auth.userId != userId) {

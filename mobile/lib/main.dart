@@ -155,13 +155,9 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
       );
     },
     home: Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.demoBuilder == null
-              ? 'EnableWork+'
-              : 'EnableWork+ · Sample data',
-        ),
-      ),
+      appBar: widget.demoBuilder == null
+          ? null
+          : AppBar(title: const Text('EnableWork+ · Sample data')),
       body: SafeArea(
         child:
             widget.demoBuilder?.call(_apply) ??
@@ -175,7 +171,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
                           BrandIdentity(),
                           SizedBox(height: 24),
                           Text(
-                            'EnableWork+ is not connected yet. Please contact the administrator.',
+                            'Unable to connect to EnableWork+. Start the app with its approved hosted configuration, then try again.',
                             textAlign: TextAlign.center,
                           ),
                         ],

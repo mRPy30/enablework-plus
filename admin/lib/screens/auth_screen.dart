@@ -4,11 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
+import '../services/auth_callback.dart';
+import '../widgets/admin_widgets.dart';
+import '../theme/admin_theme.dart';
 
 /// Authentication foundation only; job, profile and administrative feature screens are deferred.
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({required this.service, super.key});
+  const AuthScreen({
+    required this.service,
+    this.authenticatedBuilder,
+    this.passwordSetup = false,
+    this.initialMessage,
+    super.key,
+  });
   final AuthService service;
+  final bool passwordSetup;
+  final String? initialMessage;
+  final Widget Function(BuildContext, Future<void> Function())?
+  authenticatedBuilder;
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
@@ -26,6 +39,8 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
+    _recovering = widget.passwordSetup && widget.initialMessage == null;
+    _message = widget.initialMessage;
     _access = _checkAccess();
     _subscription = widget.service.authChanges.listen(
       (event) {
@@ -38,11 +53,12 @@ class _AuthScreenState extends State<AuthScreen> {
           _access = _checkAccess();
         });
       },
-      onError: (Object _) {
+      onError: (Object error) {
         if (mounted) {
           setState(() {
             _access = Future.value(false);
-            _message = 'Session unavailable. Please sign in again.';
+            _recovering = false;
+            _message = authFailureMessage(error);
           });
         }
       },
@@ -54,7 +70,9 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       await widget.service.requireAccess();
       return true;
-    } catch (_) {
+    } catch (error) {
+      _recovering = false;
+      _message = authFailureMessage(error);
       return false;
     }
   }
@@ -75,10 +93,10 @@ class _AuthScreenState extends State<AuthScreen> {
           _access = _checkAccess();
         });
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(() {
-          _message = 'Unable to complete the request. Check your details and account access.';
+          _message = authFailureMessage(error);
         });
       }
     } finally {
@@ -108,6 +126,11 @@ class _AuthScreenState extends State<AuthScreen> {
         return const Center(child: CircularProgressIndicator());
       }
       final authenticated = snapshot.data ?? false;
+      if (authenticated &&
+          !_recovering &&
+          widget.authenticatedBuilder != null) {
+        return widget.authenticatedBuilder!(context, widget.service.signOut);
+      }
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -116,10 +139,34 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const AdminBrand(),
+                const SizedBox(height: 16),
+                Text(
+                  _recovering ? 'Set administrator password' : 'Welcome back',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _recovering
+                      ? 'Create a new password for your secure console access.'
+                      : 'Sign in with a provisioned System Administrator account.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge
+                      ?.copyWith(color: AdminColors.muted),
+                ),
+                const SizedBox(height: 20),
                 if (authenticated && !_recovering) ...[
-                  const Text(
-                    'Authentication verified. Feature screens follow in later phases.',
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Text(
+                        'Authentication verified. The protected administrator console is ready.',
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 12),
                   FilledButton(
                     onPressed: _busy
                         ? null
@@ -127,32 +174,49 @@ class _AuthScreenState extends State<AuthScreen> {
                     child: const Text('Sign out'),
                   ),
                 ] else ...[
-                  if (!_recovering) ...[
-                    const Text(
-                      'System Administrator',
-                      style: TextStyle(fontSize: 24),
-                    ),
-                    TextField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      decoration: const InputDecoration(labelText: 'Email'),
-                    ),
-                  ],
-                  TextField(
-                    controller: _password,
-                    obscureText: true,
-                    enableSuggestions: false,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      labelText: _recovering
-                          ? 'New password (at least 12 characters)'
-                          : 'Password',
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!_recovering)
+                            Text(
+                              'System Administrator',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          if (!_recovering) const SizedBox(height: 16),
+                          if (!_recovering)
+                            TextField(
+                              controller: _email,
+                              keyboardType: TextInputType.emailAddress,
+                              autocorrect: false,
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                prefixIcon: Icon(Icons.mail_outline),
+                              ),
+                            ),
+                          if (!_recovering) const SizedBox(height: 12),
+                          TextField(
+                            controller: _password,
+                            obscureText: true,
+                            enableSuggestions: false,
+                            autocorrect: false,
+                            decoration: InputDecoration(
+                              labelText: _recovering
+                                  ? 'New password (at least 12 characters)'
+                                  : 'Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 14),
                   if (_recovering)
                     FilledButton(
-                      onPressed: _busy
+                      onPressed: _busy || !authenticated
                           ? null
                           : () => _perform(() async {
                               await widget.service.updatePassword(

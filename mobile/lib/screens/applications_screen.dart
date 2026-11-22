@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/career_preview.dart';
 import '../models/seeker_workspace.dart';
 import '../widgets/workspace_widgets.dart';
+import 'candidate_support_screen.dart';
 
 class ApplicationsScreen extends StatefulWidget {
   const ApplicationsScreen({
@@ -163,8 +164,9 @@ class ApplicationStatus extends StatelessWidget {
 }
 
 class ApplicationDetails extends StatelessWidget {
-  const ApplicationDetails(this.application, {super.key});
+  const ApplicationDetails(this.application, {this.support, super.key});
   final SeekerApplication application;
+  final CandidateSupportRepository? support;
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(16),
@@ -185,6 +187,19 @@ class ApplicationDetails extends StatelessWidget {
         title: 'Submitted resume',
         children: [Text(application.resumeTitle)],
       ),
+      if (support != null && application.id != null)
+        FilledButton.tonalIcon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CandidateSupportScreen(
+                applicationId: application.id!,
+                repository: support!,
+              ),
+            ),
+          ),
+          icon: const Icon(Icons.support_agent_outlined),
+          label: const Text('Messages, interviews and accommodations'),
+        ),
     ],
   );
 }
