@@ -70,5 +70,9 @@ deno_version = 2
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/resume-finalize/index.ts"
+[functions.resume-scan]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/resume-scan/index.ts"
 [analytics]
 enabled = false
