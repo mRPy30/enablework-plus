@@ -4,6 +4,7 @@ import '../models/seeker_workspace.dart';
 import '../services/seeker_repository.dart';
 import '../state/seeker_controller.dart';
 import '../widgets/workspace_widgets.dart';
+import 'resume_builder_screen.dart';
 
 class ResumesScreen extends StatefulWidget {
   const ResumesScreen({
@@ -121,6 +122,20 @@ class _ResumesScreenState extends State<ResumesScreen> {
           SectionCard(
             title: 'Add a resume',
             children: [
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ResumeBuilderScreen(
+                            controller: widget.controller,
+                          ),
+                        ),
+                      ),
+                icon: const Icon(Icons.edit_document),
+                label: const Text('Build an accessible resume'),
+              ),
+              const SizedBox(height: 12),
               const Text(
                 'Choose a PDF up to 5 MiB. Each upload creates a separate version.',
               ),
