@@ -6,6 +6,7 @@ import '../models/career_preview.dart';
 import 'career_repository.dart';
 import '../screens/candidate_support_screen.dart';
 import 'auth_service.dart';
+import 'resume_scan_repository.dart';
 
 abstract interface class PdfPicker {
   Future<PickedPdf?> pick();
@@ -79,7 +80,8 @@ class SupabaseSeekerRepository
         SeekerRepository,
         ResumeBackend,
         CareerRepository,
-        CandidateSupportRepository {
+        CandidateSupportRepository,
+        ResumeScanRepository {
   SupabaseSeekerRepository(this.auth, this.userId);
   final AuthService auth;
   SupabaseClient get _client => auth.client;
@@ -552,6 +554,23 @@ class SupabaseSeekerRepository
         'PDF validation could not finish. Try again from the resume list.',
       );
     }
+  });
+
+  @override
+  Future<ResumeScanResult> scanResume(String resumeId) => _run(() async {
+    final response = await _client.functions.invoke(
+      'resume-scan',
+      body: {'resume_id': resumeId},
+    );
+    if (response.status != 200 || response.data is! Map) {
+      throw const WorkspaceFailure(
+        'Resume scanning is unavailable right now. Please try again later.',
+      );
+    }
+    final body = Map<String, dynamic>.from(response.data as Map);
+    return ResumeScanResult.fromJson(
+      Map<String, dynamic>.from(body['result'] as Map? ?? const {}),
+    );
   });
   @override
   Future<void> retryValidation(String id) => finalize(id);

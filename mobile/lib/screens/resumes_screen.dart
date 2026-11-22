@@ -5,17 +5,21 @@ import '../services/seeker_repository.dart';
 import '../state/seeker_controller.dart';
 import '../widgets/workspace_widgets.dart';
 import 'resume_builder_screen.dart';
+import 'resume_scan_screen.dart';
+import '../services/resume_scan_repository.dart';
 
 class ResumesScreen extends StatefulWidget {
   const ResumesScreen({
     required this.controller,
     required this.picker,
     this.addSample,
+    this.scanRepository,
     super.key,
   });
   final SeekerController controller;
   final PdfPicker picker;
   final VoidCallback? addSample;
+  final ResumeScanRepository? scanRepository;
   @override
   State<ResumesScreen> createState() => _ResumesScreenState();
 }
@@ -221,6 +225,22 @@ class _ResumesScreenState extends State<ResumesScreen> {
                     ),
                 ],
               ),
+              if (widget.scanRepository != null &&
+                  r.status == ResumeStatus.ready)
+                OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ResumeScanScreen(
+                              resumeId: r.id,
+                              repository: widget.scanRepository!,
+                            ),
+                          ),
+                        ),
+                  icon: const Icon(Icons.auto_awesome_outlined),
+                  label: const Text('Scan this resume'),
+                ),
               if (r.isSubmitted)
                 const Text(
                   'This version is retained with your submitted applications.',

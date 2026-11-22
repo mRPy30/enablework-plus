@@ -14,6 +14,7 @@ import 'profile_screen.dart';
 import 'resumes_screen.dart';
 import 'accessibility_screen.dart';
 import 'candidate_support_screen.dart';
+import '../services/resume_scan_repository.dart';
 
 class SeekerHome extends StatefulWidget {
   const SeekerHome({
@@ -74,6 +75,9 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
       controller: _controller,
       picker: _picker,
       addSample: widget.preview == null ? null : widget.addSampleResume,
+      scanRepository: widget.repository is ResumeScanRepository
+          ? widget.repository as ResumeScanRepository
+          : null,
     ),
   );
   void _openPreviewJob(CareerPreview preview, JobListing job) => _open(
