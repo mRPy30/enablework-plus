@@ -193,11 +193,13 @@ class JobDetails extends StatelessWidget {
     required this.job,
     required this.applied,
     required this.onReview,
+    this.onMatch,
     super.key,
   });
   final JobListing job;
   final bool applied;
   final VoidCallback onReview;
+  final VoidCallback? onMatch;
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(16),
@@ -235,6 +237,12 @@ class JobDetails extends StatelessWidget {
             ),
         ],
       ),
+      if (onMatch != null)
+        OutlinedButton.icon(
+          onPressed: onMatch,
+          icon: const Icon(Icons.auto_awesome_outlined),
+          label: const Text('Check job fit'),
+        ),
       FilledButton(
         onPressed: applied || !job.acceptingApplications ? null : onReview,
         child: Text(

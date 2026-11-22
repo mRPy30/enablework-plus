@@ -5,6 +5,8 @@ import '../models/seeker_workspace.dart';
 import '../services/career_repository.dart';
 import '../widgets/workspace_widgets.dart';
 import 'jobs_screen.dart';
+import '../services/job_match_repository.dart';
+import 'job_match_screen.dart';
 
 class AuthenticatedJobFlow extends StatefulWidget {
   const AuthenticatedJobFlow({
@@ -15,6 +17,7 @@ class AuthenticatedJobFlow extends StatefulWidget {
     required this.onSubmitted,
     required this.onAccessLost,
     required this.onBusy,
+    this.matcher,
     super.key,
   });
   final String jobId;
@@ -22,6 +25,7 @@ class AuthenticatedJobFlow extends StatefulWidget {
   final List<ResumeRecord> resumes;
   final VoidCallback onManage, onAccessLost;
   final ValueChanged<bool> onBusy;
+  final JobMatchRepository? matcher;
   final ValueChanged<SeekerApplication> onSubmitted;
   @override
   State<AuthenticatedJobFlow> createState() => _AuthenticatedJobFlowState();
@@ -120,6 +124,16 @@ class _AuthenticatedJobFlowState extends State<AuthenticatedJobFlow> {
               job: data.job,
               applied: data.applied,
               onReview: () => setState(() => _review = true),
+              onMatch: widget.matcher == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => JobMatchScreen(
+                          jobId: data.job.id,
+                          repository: widget.matcher!,
+                        ),
+                      ),
+                    ),
             );
           }
           return ApplicationReview(

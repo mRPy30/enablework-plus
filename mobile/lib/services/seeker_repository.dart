@@ -7,6 +7,7 @@ import 'career_repository.dart';
 import '../screens/candidate_support_screen.dart';
 import 'auth_service.dart';
 import 'resume_scan_repository.dart';
+import 'job_match_repository.dart';
 
 abstract interface class PdfPicker {
   Future<PickedPdf?> pick();
@@ -81,7 +82,8 @@ class SupabaseSeekerRepository
         ResumeBackend,
         CareerRepository,
         CandidateSupportRepository,
-        ResumeScanRepository {
+        ResumeScanRepository,
+        JobMatchRepository {
   SupabaseSeekerRepository(this.auth, this.userId);
   final AuthService auth;
   SupabaseClient get _client => auth.client;
@@ -569,6 +571,23 @@ class SupabaseSeekerRepository
     }
     final body = Map<String, dynamic>.from(response.data as Map);
     return ResumeScanResult.fromJson(
+      Map<String, dynamic>.from(body['result'] as Map? ?? const {}),
+    );
+  });
+
+  @override
+  Future<JobMatchResult> matchJob(String jobId) => _run(() async {
+    final response = await _client.functions.invoke(
+      'job-match',
+      body: {'job_id': jobId},
+    );
+    if (response.status != 200 || response.data is! Map) {
+      throw const WorkspaceFailure(
+        'Job matching is unavailable right now. Please try again later.',
+      );
+    }
+    final body = Map<String, dynamic>.from(response.data as Map);
+    return JobMatchResult.fromJson(
       Map<String, dynamic>.from(body['result'] as Map? ?? const {}),
     );
   });

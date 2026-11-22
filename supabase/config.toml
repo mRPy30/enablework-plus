@@ -74,5 +74,9 @@ entrypoint = "./functions/resume-finalize/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/resume-scan/index.ts"
+[functions.job-match]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/job-match/index.ts"
 [analytics]
 enabled = false

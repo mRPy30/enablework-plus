@@ -15,6 +15,7 @@ import 'resumes_screen.dart';
 import 'accessibility_screen.dart';
 import 'candidate_support_screen.dart';
 import '../services/resume_scan_repository.dart';
+import '../services/job_match_repository.dart';
 
 class SeekerHome extends StatefulWidget {
   const SeekerHome({
@@ -118,6 +119,9 @@ class _SeekerHomeState extends State<SeekerHome> with WidgetsBindingObserver {
       onBusy: (value) {
         if (mounted) setState(() => _careerBusy = value);
       },
+      matcher: widget.repository is JobMatchRepository
+          ? widget.repository as JobMatchRepository
+          : null,
       onSubmitted: (application) {
         if (!mounted) return;
         setState(() {
