@@ -23,7 +23,9 @@ class _AdminLivePanelState extends State<AdminLivePanel> {
   Future<Object> _load() => widget.section == 'overview'
       ? widget.repository.counts()
       : widget.repository.records(widget.section, _page);
-  void _refresh() => setState(() { _result = _load(); });
+  void _refresh() => setState(() {
+    _result = _load();
+  });
 
   String _title(Map<String, dynamic> row) => switch (widget.section) {
     'seekers' => '${row['full_name'] ?? 'Unnamed seeker'}',
@@ -128,13 +130,7 @@ class _AdminLivePanelState extends State<AdminLivePanel> {
                   title: 'No matching records',
                   message: 'No records are available on this page. No sample data is shown.',
                 ),
-              for (final row in filtered)
-                Card(
-                  child: ListTile(
-                    title: Text(_title(row)),
-                    subtitle: Text(_details(row)),
-                  ),
-                ),
+              for (final row in filtered) _recordCard(row),
               Wrap(
                 spacing: 12,
                 crossAxisAlignment: WrapCrossAlignment.center,
@@ -166,4 +162,83 @@ class _AdminLivePanelState extends State<AdminLivePanel> {
       ),
     ],
   );
+
+  Widget _recordCard(Map<String, dynamic> row) {
+    final applicationId = row['id'] as String?;
+    final status = row['status'] as String?;
+    final canUpdate =
+        widget.section == 'applications' &&
+        applicationId != null &&
+        status != null &&
+        widget.repository is AdminRepository;
+    return Card(
+      child: ListTile(
+        title: Text(_title(row)),
+        subtitle: Text(_details(row)),
+        trailing: canUpdate
+            ? _ApplicationStatusAction(
+                status: status,
+                onChanged: (next) async {
+                  await (widget.repository as AdminRepository)
+                      .updateApplicationStatus(applicationId, next);
+                  if (mounted) _refresh();
+                },
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+class _ApplicationStatusAction extends StatefulWidget {
+  const _ApplicationStatusAction({
+    required this.status,
+    required this.onChanged,
+  });
+  final String status;
+  final Future<void> Function(String status) onChanged;
+  @override
+  State<_ApplicationStatusAction> createState() =>
+      _ApplicationStatusActionState();
+}
+
+class _ApplicationStatusActionState extends State<_ApplicationStatusAction> {
+  bool _busy = false;
+  late String _status = widget.status;
+
+  List<String> get _options => switch (_status) {
+    'submitted' => const ['under_review', 'rejected'],
+    'under_review' => const ['shortlisted', 'rejected'],
+    'shortlisted' => const ['hired', 'rejected'],
+    _ => const [],
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final options = [_status, ..._options];
+    return DropdownButton<String>(
+      value: _status,
+      items: [
+        for (final value in options)
+          DropdownMenuItem(value: value, child: Text(value)),
+      ],
+      onChanged: _busy
+          ? null
+          : (next) async {
+              if (next == null || next == _status) return;
+              setState(() => _busy = true);
+              try {
+                await widget.onChanged(next);
+                if (mounted) setState(() => _status = next);
+              } catch (_) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  const SnackBar(content: Text('Status could not be updated.')),
+                );
+              } finally {
+                if (mounted) setState(() => _busy = false);
+              }
+            },
+    );
+  }
 }

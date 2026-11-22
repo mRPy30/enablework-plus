@@ -10,6 +10,7 @@ class AdminRepository implements AdminDataSource {
   AdminRepository(this.auth);
   final AuthService auth;
 
+  @override
   Future<Map<String, int>> counts() async {
     await auth.requireAccess();
     final client = auth.client;
@@ -27,6 +28,7 @@ class AdminRepository implements AdminDataSource {
     ], counts);
   }
 
+  @override
   Future<List<Map<String, dynamic>>> records(String section, int page) async {
     await auth.requireAccess();
     final client = auth.client;
@@ -68,5 +70,16 @@ class AdminRepository implements AdminDataSource {
       _ => throw ArgumentError('Unsupported administrator section'),
     };
     return await query.timeout(const Duration(seconds: 20));
+  }
+
+  Future<void> updateApplicationStatus(
+    String applicationId,
+    String status,
+  ) async {
+    await auth.requireAccess();
+    await auth.client.rpc(
+      'set_application_status',
+      params: {'p_application_id': applicationId, 'p_status': status},
+    );
   }
 }
