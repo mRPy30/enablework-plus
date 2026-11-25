@@ -1,3 +1,4 @@
+import 'fsl_section_guide.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/workspace_widgets.dart';
@@ -161,6 +162,7 @@ class _CandidateSupportScreenState extends State<CandidateSupportScreen> {
     padding: const EdgeInsets.all(16),
     children: [
       const CareerHeading('Application support'),
+        const FslSectionGuide(GuideSection.support),
       const Text(
         'Messages are handled by the System Administrator and relayed to the company when appropriate.',
       ),

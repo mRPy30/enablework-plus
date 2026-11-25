@@ -27,6 +27,7 @@ class JobListing {
       title,
       company,
       city,
+      ...requiredSkills,
       ...accessibility,
     ].join(' ').toLowerCase();
     return (work == null || work == arrangement) && words.every(text.contains);

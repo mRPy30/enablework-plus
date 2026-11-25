@@ -609,19 +609,26 @@ class SupabaseSeekerRepository
 
   @override
   Future<JobMatchResult> matchJob(String jobId) => _run(() async {
-    final response = await _client.functions.invoke(
-      'job-match',
-      body: {'job_id': jobId},
-    );
-    if (response.status != 200 || response.data is! Map) {
-      throw const WorkspaceFailure(
-        'Job matching is unavailable right now. Please try again later.',
-      );
+    try {
+      final response = await _client.functions.invoke('job-match', body: {'job_id': jobId});
+      final body = response.data;
+      if (body is Map && body['result'] is Map && response.status == 200) {
+        return JobMatchResult.fromJson(Map<String, dynamic>.from(body['result'] as Map));
+      }
+    } on FunctionException catch (error) {
+      if (error.status == 401 || error.status == 403) {
+        throw const WorkspaceFailure('Access to this review could not be verified. Sign in again and reopen the job.');
+      }
+      if (error.status == 404 && error.details is Map && error.details['error'] == 'Published job unavailable') {
+        throw const WorkspaceFailure('The job or your seeker profile is unavailable. Refresh Jobs and check your profile.');
+      }
     }
-    final body = Map<String, dynamic>.from(response.data as Map);
-    return JobMatchResult.fromJson(
-      Map<String, dynamic>.from(body['result'] as Map? ?? const {}),
-    );
+    final job = await loadJob(jobId);
+    if (!job.acceptingApplications) {
+      throw const WorkspaceFailure('This job is no longer open. Refresh the job list.');
+    }
+    final details = await _client.from('job_seeker_profiles').select('skills').eq('user_id', userId).single();
+    return JobMatchResult.compareSkills(job, List<String>.from(details['skills'] as List));
   });
   @override
   Future<void> retryValidation(String id) => finalize(id);

@@ -75,6 +75,19 @@ Future<void> tapLabel(WidgetTester t, String label) async {
 }
 
 void main() {
+  testWidgets('top bar opens notifications, profile and display controls', (t) async {
+    await render(t, FakeRepository()..value = workspace(large: true));
+    await t.pumpAndSettle();
+    await t.tap(find.byTooltip('Notifications'));
+    await t.pumpAndSettle();
+    expect(find.text('Notifications'), findsOneWidget);
+    await t.tap(find.byTooltip('Open profile'));
+    await t.pumpAndSettle();
+    expect(t.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 3);
+    await t.tap(find.text('Display and controls'));
+    await t.pumpAndSettle();
+    expect(find.text('Welcome to EnableWork+'), findsOneWidget);
+  });
   for (final (action, destination) in [
     ('Complete profile', 3),
     ('Find jobs', 1),

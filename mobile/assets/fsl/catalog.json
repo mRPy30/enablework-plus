@@ -1,0 +1,122 @@
+[
+  {
+    "id": "0",
+    "label": "Good morning",
+    "category": "Greeting",
+    "filipino": "Magandang umaga"
+  },
+  {
+    "id": "1",
+    "label": "Good afternoon",
+    "category": "Greeting",
+    "filipino": "Magandang hapon"
+  },
+  {
+    "id": "2",
+    "label": "Good evening",
+    "category": "Greeting",
+    "filipino": "Magandang gabi"
+  },
+  {
+    "id": "3",
+    "label": "Hello",
+    "category": "Greeting",
+    "filipino": "Kumusta"
+  },
+  {
+    "id": "4",
+    "label": "How are you",
+    "category": "Greeting",
+    "filipino": "Kumusta ka"
+  },
+  {
+    "id": "5",
+    "label": "I am fine",
+    "category": "Greeting",
+    "filipino": "Mabuti naman ako"
+  },
+  {
+    "id": "6",
+    "label": "Nice to meet you",
+    "category": "Greeting",
+    "filipino": "Ikinagagalak kitang makilala"
+  },
+  {
+    "id": "7",
+    "label": "Thank you",
+    "category": "Greeting",
+    "filipino": "Salamat"
+  },
+  {
+    "id": "8",
+    "label": "You are welcome",
+    "category": "Greeting",
+    "filipino": "Walang anuman"
+  },
+  {
+    "id": "9",
+    "label": "See you tomorrow",
+    "category": "Greeting",
+    "filipino": "Kita tayo bukas"
+  },
+  {
+    "id": "10",
+    "label": "Understand",
+    "category": "Everyday communication",
+    "filipino": "Naiintindihan"
+  },
+  {
+    "id": "11",
+    "label": "Do not understand",
+    "category": "Everyday communication",
+    "filipino": "Hindi naiintindihan"
+  },
+  {
+    "id": "12",
+    "label": "Know",
+    "category": "Everyday communication",
+    "filipino": "Alam"
+  },
+  {
+    "id": "13",
+    "label": "Do not know",
+    "category": "Everyday communication",
+    "filipino": "Hindi alam"
+  },
+  {
+    "id": "14",
+    "label": "No",
+    "category": "Everyday communication",
+    "filipino": "Hindi"
+  },
+  {
+    "id": "15",
+    "label": "Yes",
+    "category": "Everyday communication",
+    "filipino": "Oo"
+  },
+  {
+    "id": "16",
+    "label": "Wrong",
+    "category": "Everyday communication",
+    "filipino": "Mali"
+  },
+  {
+    "id": "17",
+    "label": "Correct",
+    "category": "Everyday communication",
+    "filipino": "Tama"
+  },
+  {
+    "id": "18",
+    "label": "Slow",
+    "category": "Everyday communication",
+    "filipino": "Mabagal"
+  },
+  {
+    "id": "19",
+    "label": "Fast",
+    "category": "Everyday communication",
+    "filipino": "Mabilis"
+  }
+]

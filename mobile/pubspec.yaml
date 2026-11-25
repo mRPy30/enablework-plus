@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_secure_storage: ^11.2.0
   supabase_flutter: ^2.18.3
+  video_player: ^2.14.1
+  camera: ^0.12.2
 
 dev_dependencies:
   flutter_test:
@@ -21,4 +23,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/guide/
+    - assets/fsl/
     - assets/branding/enablework-plus-logo.png

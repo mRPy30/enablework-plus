@@ -65,8 +65,11 @@ class SeekerController extends ChangeNotifier {
     Future<void> Function() action, {
     String label = 'Saving',
   }) async {
-    if (busy || loading || _disposed || data == null) return false;
-    final token = _generation;
+    if (busy || _disposed || data == null) return false;
+    // Returning from Android's file picker can start a background load.
+    // The mutation refreshes the workspace itself, so discard the older read.
+    final token = ++_generation;
+    loading = false;
     busy = true;
     error = null;
     progress = label;

@@ -84,6 +84,22 @@ class StalePreferences extends FakeRepository {
 }
 
 void main() {
+  testWidgets('voice-first is opt-in and persists only on confirmation', (
+    tester,
+  ) async {
+    final repo = unreviewed();
+    await showFlow(tester, repo);
+    await tapLabel(tester, 'Next');
+    final toggle = find.widgetWithText(SwitchListTile, 'Voice-first mode');
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+    await tapLabel(tester, 'Voice-first mode');
+    expect(repo.value.preferences.enabledFeatures, isEmpty);
+    await tapLabel(tester, 'Next');
+    await tapLabel(tester, 'Confirm and save');
+    expect(repo.value.preferences.enabledFeatures, contains('voice_guidance'));
+    expect(repo.value.preferences.accessibilityNeeds, isEmpty);
+  });
+
   testWidgets(
     'seven accessible categories support multiple choices and retained drafts',
     (tester) async {
@@ -109,7 +125,7 @@ void main() {
         isSemantics(hasCheckedState: true, isChecked: true),
       );
       await tapLabel(tester, 'Next');
-      expect(find.byType(SwitchListTile), findsNWidgets(2));
+      expect(find.byType(SwitchListTile), findsNWidgets(3));
       expect(
         tester
             .widget<SwitchListTile>(
@@ -299,7 +315,13 @@ void main() {
     await showFlow(tester, repo);
     await tapLabel(tester, 'Next');
     await tapLabel(tester, 'Next');
-    await tester.ensureVisible(find.text('Confirm and save'));
+    final confirm = find.text('Confirm and save');
+    await tester.scrollUntilVisible(
+      confirm.hitTestable(),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(confirm);
     await tester.tap(find.text('Confirm and save'));
     await tester.pump();
     expect(
@@ -327,10 +349,7 @@ void main() {
       await showFlow(tester, repo, onboarding: false);
       await tapLabel(tester, 'Review changes');
       expect(find.widgetWithText(SwitchListTile, 'Voice search'), findsNothing);
-      expect(
-        find.textContaining('not active in this app version'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('tap the microphone in Jobs'), findsOneWidget);
       await tapLabel(tester, 'Confirm and save');
       expect(repo.value.preferences.enabledFeatures, ['voice_search']);
     },

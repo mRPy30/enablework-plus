@@ -1,3 +1,4 @@
+import 'fsl_section_guide.dart';
 import 'package:flutter/material.dart';
 
 import '../services/resume_scan_repository.dart';
@@ -36,6 +37,7 @@ class _ResumeScanScreenState extends State<ResumeScanScreen> {
     padding: const EdgeInsets.all(16),
     children: [
       const CareerHeading('Resume scan results'),
+        const FslSectionGuide(GuideSection.scan),
       const Text(
         'This review provides writing and accessibility suggestions. It is not a hiring decision or a protected-characteristic assessment.',
       ),

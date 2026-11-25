@@ -1,3 +1,4 @@
+import 'fsl_section_guide.dart';
 import 'package:flutter/material.dart';
 
 import '../models/seeker_workspace.dart';
@@ -101,6 +102,7 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         const CareerHeading('Build your accessible resume'),
+        const FslSectionGuide(GuideSection.builder),
         const Text(
           'Create a structured resume from your profile. You control every field, and nothing is sent to an AI service yet.',
         ),

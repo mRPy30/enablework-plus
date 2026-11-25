@@ -1,3 +1,4 @@
+import 'fsl_section_guide.dart';
 import 'package:flutter/material.dart';
 
 import '../models/seeker_workspace.dart';
@@ -47,6 +48,9 @@ class _ResumesScreenState extends State<ResumesScreen> {
       final pdf = await widget.picker.pick();
       if (!mounted || pdf == null) return;
       final saved = await widget.controller.upload(_title.text, pdf);
+      if (mounted && !saved && widget.controller.error == null) {
+        setState(() => _error = 'Upload could not start. Please choose the PDF again.');
+      }
       if (mounted && saved) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -104,6 +108,7 @@ class _ResumesScreenState extends State<ResumesScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const FslSectionGuide(GuideSection.resumes),
         if (widget.addSample != null)
           SectionCard(
             title: 'Sample resumes',

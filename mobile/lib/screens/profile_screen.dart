@@ -1,4 +1,10 @@
+import 'package:flutter/services.dart';
+
+import '../widgets/voice_guidance.dart';
+import 'fsl_section_guide.dart';
+
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -57,6 +63,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  bool _dictating = false;
+  Future<void> _dictate(String key) async {
+    if (_dictating) return;
+    setState(() => _dictating = true);
+    try {
+      final words = await const MethodChannel('enablework_plus/voice_search')
+          .invokeMethod<String>('listen', {
+            'prompt':
+                'Dictate ${profileFieldLabels[key]}. You can edit before saving.',
+          });
+      if (!mounted || words == null) return;
+      if (words.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No words recognized. Try again or type.'),
+          ),
+        );
+        return;
+      }
+      final field = _fields[key]!;
+      final updated = [
+        field.text.trimRight(),
+        words.trim(),
+      ].where((s) => s.isNotEmpty).join(' ');
+      field.value = TextEditingValue(
+        text: updated,
+        selection: TextSelection.collapsed(offset: updated.length),
+      );
+      _dirty = true;
+    } on PlatformException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Voice input unavailable. You can type instead.'),
+          ),
+        );
+      }
+    } on MissingPluginException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Voice input unavailable. You can type instead.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _dictating = false);
+    }
+  }
+
   Widget _field(String key, {int lines = 1}) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: TextFormField(
@@ -76,6 +132,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : TextCapitalization.sentences,
       decoration: InputDecoration(
         labelText: profileFieldLabels[key],
+        suffixIcon:
+            androidVoice &&
+                const {'skills', 'summary', 'headline'}.contains(key)
+            ? IconButton(
+                tooltip: 'Dictate ${profileFieldLabels[key]}',
+                icon: const Icon(Icons.mic),
+                onPressed: _dictating || widget.controller.busy
+                    ? null
+                    : () => _dictate(key),
+              )
+            : null,
         border: const OutlineInputBorder(),
         helperText: key == 'accommodation_needs'
             ? 'Share work adjustments you want to discuss. Medical details are not needed.'
@@ -171,7 +238,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (ext.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not determine the image type. Choose a JPG, PNG, or WebP file.')),
+          const SnackBar(
+            content: Text(
+              'Could not determine the image type. Choose a JPG, PNG, or WebP file.',
+            ),
+          ),
         );
       }
       return;
@@ -189,9 +260,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final saved = await widget.controller.uploadProfilePhoto(image);
     if (!mounted) return;
     if (saved) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile photo updated.')));
     }
   }
 
@@ -201,6 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     child: ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const FslSectionGuide(GuideSection.profile),
         Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
@@ -225,7 +297,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text('JPEG, PNG, or WebP up to 20 MB. Stored privately and visible only to you.'),
+            const Text(
+              'JPEG, PNG, or WebP up to 20 MB. Stored privately and visible only to you.',
+            ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: widget.controller.busy ? null : _pickPhoto,

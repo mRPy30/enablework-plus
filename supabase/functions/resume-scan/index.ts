@@ -1,13 +1,15 @@
+import { cors, providerFailure, readResult, reviewFormat } from "../_shared/ai-result.ts";
 type Json = Record<string, unknown>;
 
 const json = (status: number, body: Json) => new Response(JSON.stringify(body), {
   status,
-  headers: { "Content-Type": "application/json" },
+  headers: { ...cors, "Content-Type": "application/json" },
 });
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 Deno.serve(async (request: Request) => {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (request.method !== "POST") return json(405, { error: "POST required" });
   const authorization = request.headers.get("Authorization") ?? "";
   if (!/^Bearer \S+$/.test(authorization)) return json(401, { error: "Authentication required" });
@@ -26,6 +28,7 @@ Deno.serve(async (request: Request) => {
   };
 
   let scanId: string | undefined;
+  let failure = "Unable to prepare review";
   try {
     const body = await request.json() as Json;
     const resumeId = body.resume_id;
@@ -69,6 +72,7 @@ Deno.serve(async (request: Request) => {
     for (const byte of bytes) binary += String.fromCharCode(byte);
     const base64 = btoa(binary);
 
+    failure = "AI request could not be sent";
     const openAi = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -84,24 +88,30 @@ Deno.serve(async (request: Request) => {
             { type: "input_text", text: "Review this resume for completeness and accessibility. Return JSON with keys: strengths (array of strings), missing_sections (array of strings), skills (array of strings), readability_notes (array of strings), accessibility_notes (array of strings). Do not infer protected characteristics or make hiring decisions." },
           ],
         }],
-        text: { format: { type: "json_object" } },
+        text: { format: reviewFormat("resume_scan", ["strengths", "missing_sections", "skills", "readability_notes", "accessibility_notes"]) },
       }),
     });
-    if (!openAi.ok) throw new Error("AI provider unavailable");
-    const completion = await openAi.json() as { output_text?: string; model?: string };
-    const result = JSON.parse(completion.output_text ?? "{}");
-    await fetch(`${supabaseUrl}/rest/v1/resume_ai_scans?id=eq.${scanId}`, {
+    if (!openAi.ok) {
+      failure = "AI provider: " + await providerFailure(openAi);
+      throw new Error(failure);
+    }
+    failure = "AI response could not be read";
+    const completion = await openAi.json();
+    const result = readResult(completion, ["strengths", "missing_sections", "skills", "readability_notes", "accessibility_notes"]);
+    failure = "Could not save AI review";
+    const saved = await fetch(`${supabaseUrl}/rest/v1/resume_ai_scans?id=eq.${scanId}`, {
       method: "PATCH",
       headers: serviceHeaders,
       body: JSON.stringify({ status: "completed", result, model: completion.model ?? "unknown", completed_at: new Date().toISOString() }),
     });
+    if (!saved.ok) throw new Error("Could not save AI review");
     return json(200, { scan_id: scanId, status: "completed", result });
   } catch (_) {
     if (scanId) {
       await fetch(`${supabaseUrl}/rest/v1/resume_ai_scans?id=eq.${scanId}`, {
         method: "PATCH",
         headers: serviceHeaders,
-        body: JSON.stringify({ status: "failed", error_message: "Resume scan could not be completed" }),
+        body: JSON.stringify({ status: "failed", error_message: failure }),
       }).catch(() => undefined);
     }
     return json(422, { error: "Resume scan could not be completed" });

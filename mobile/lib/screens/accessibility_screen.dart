@@ -1,5 +1,10 @@
+import 'fsl_section_guide.dart';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'sign_library.dart';
 
 import '../models/seeker_workspace.dart';
 import '../state/seeker_controller.dart';
@@ -42,20 +47,15 @@ class SignLanguageSupportScreen extends StatelessWidget {
     }
   }
 
-  void _showModelStatus(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('FSL recognition is not connected'),
-        content: const Text(
-          'The camera model is not enabled in this build. No sign is interpreted or stored. A validated Filipino Sign Language model and consent review are required before activation.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+  void _openLibrary(
+    BuildContext context, {
+    bool greetings = false,
+    bool practice = false,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => SignLibrary(greetings: greetings, practice: practice),
       ),
     );
   }
@@ -65,19 +65,24 @@ class SignLanguageSupportScreen extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     children: [
       const CareerHeading('Sign language support'),
-      const Text('Use these ready-to-share phrases during job search, interviews, or support conversations.'),
-      const SizedBox(height: 12),
+      const FslSectionGuide(GuideSection.signs),
       SectionCard(
-        title: 'FSL live camera',
+        title: 'Filipino Sign Language',
         children: [
-          const Text(
-            'This section will use your camera to recognize Filipino Sign Language and describe the result in plain text. Camera access and recognition are off until the validated model is connected.',
+          ListTile(
+            leading: const Icon(Icons.play_circle_outline),
+            title: const Text('Watch greetings in FSL'),
+            onTap: () => _openLibrary(context, greetings: true),
           ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => _showModelStatus(context),
-            icon: const Icon(Icons.videocam_outlined, size: 28),
-            label: const Text('Check camera recognition status'),
+          ListTile(
+            leading: const Icon(Icons.menu_book),
+            title: const Text('Look up a sign'),
+            onTap: () => _openLibrary(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.videocam_outlined),
+            title: const Text('Practice a sign on camera'),
+            onTap: () => _openLibrary(context, practice: true),
           ),
         ],
       ),
@@ -97,14 +102,6 @@ class SignLanguageSupportScreen extends StatelessWidget {
                 onPressed: () => _copy(context, phrase),
               ),
             ),
-        ],
-      ),
-      SectionCard(
-        title: 'Live translation status',
-        children: [
-          const Icon(Icons.videocam_off_outlined, size: 42),
-          const SizedBox(height: 8),
-          const Text('Live camera sign-language translation is not enabled yet. It requires a validated model, consent flow, and privacy review.'),
         ],
       ),
     ],
@@ -149,7 +146,7 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
   final _scroll = ScrollController();
   late AccessibilityPreferences _basePreferences;
   late double _scale;
-  late bool _contrast, _motion;
+  late bool _contrast, _motion, _voiceFirst;
   late Set<String> _selectedNeeds;
   late int _step;
   bool _dirty = false, _saving = false;
@@ -169,6 +166,7 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
     _basePreferences = p;
     _selectedNeeds = p.accessibilityNeeds.toSet();
     _scale = p.textScale;
+    _voiceFirst = p.enabledFeatures.contains('voice_guidance');
     _contrast = p.highContrast;
     _motion = p.reduceMotion;
     _dirty = false;
@@ -237,6 +235,12 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
         highContrast: _contrast,
         reduceMotion: _motion,
         accessibilityNeeds: _needs.keys.where(_selectedNeeds.contains).toList(),
+        enabledFeatures: [
+          ..._basePreferences.enabledFeatures.where(
+            (f) => f != 'voice_guidance',
+          ),
+          if (_voiceFirst) 'voice_guidance',
+        ],
         preferencesReviewed: true,
       ),
     );
@@ -261,6 +265,20 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
   }
 
   List<Widget> _featureControls() => [
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+      SwitchListTile(
+        title: const Text('Voice-first mode'),
+        subtitle: const Text(
+          'Hear navigation guidance and job search results. With TalkBack, use its usual gestures or choose Hear navigation help.',
+        ),
+        value: _voiceFirst,
+        onChanged: _disabled
+            ? null
+            : (v) => setState(() {
+                _dirty = true;
+                _voiceFirst = v;
+              }),
+      ),
     const Text(
       'Adjust your reading and motion preferences. Android’s accessibility settings are also respected.',
     ),
@@ -371,6 +389,16 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
   Widget _features() => SectionCard(
     title: 'Accessibility features',
     children: [
+      if (!kIsWeb &&
+          defaultTargetPlatform == TargetPlatform.android &&
+          _selectedNeeds.any(const {'visual', 'mobility', 'learning'}.contains))
+        const ListTile(
+          leading: Icon(Icons.mic),
+          title: Text('Try voice search'),
+          subtitle: Text(
+            'In Jobs, tap the microphone and say a title, company or city. You can edit the words or type instead.',
+          ),
+        ),
       ..._featureControls(),
       const SizedBox(height: 16),
       const Text('These controls work independently of your selected needs.'),
@@ -386,13 +414,15 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
     ],
   );
   List<Widget> _savedAdditionalChoices() => [
-    if (_basePreferences.enabledFeatures.isNotEmpty) ...[
+    if (_basePreferences.enabledFeatures.any((f) => f != 'voice_guidance')) ...[
       const SizedBox(height: 12),
       const Text('Additional saved choices'),
-      for (final feature in _basePreferences.enabledFeatures)
+      for (final feature in _basePreferences.enabledFeatures.where(
+        (f) => f != 'voice_guidance',
+      ))
         Text(_featureNames[feature]!),
       const Text(
-        'These saved choices are not active in this app version. They will be preserved. No voice feature is enabled.',
+        'Your choices are saved. On Android, tap the microphone in Jobs whenever you want to search by voice.',
       ),
     ],
   ];
@@ -422,6 +452,7 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
       ),
       Text('Text size: ${(_scale * 100).round()}%'),
       Text('High contrast: ${_contrast ? 'On' : 'Off'}'),
+      Text('Voice-first mode: ${_voiceFirst ? 'On' : 'Off'}'),
       Text('Reduced motion: ${_motion ? 'On' : 'Off'}'),
       ..._savedAdditionalChoices(),
       TextButton(
@@ -487,60 +518,64 @@ class _AccessibilityScreenState extends State<AccessibilityScreen> {
           controller: _scroll,
           padding: const EdgeInsets.fromLTRB(16, 16, 24, 24),
           children: [
-          if (widget.onboarding || _step >= 0)
-            CareerHeading(
-              widget.onboarding
-                  ? 'Personalise your experience'
-                  : 'Accessibility settings',
-            ),
-          if (_step >= 0) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(14),
+            if (widget.onboarding || _step >= 0)
+              CareerHeading(
+                widget.onboarding
+                    ? 'Personalise your experience'
+                    : 'Accessibility settings',
               ),
-              child: Semantics(
-                liveRegion: true,
-                header: true,
-                child: Text(
-                  'Step ${_step + 1} of 3',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w700,
+            const FslSectionGuide(GuideSection.settings),
+            if (_step >= 0) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Semantics(
+                  liveRegion: true,
+                  header: true,
+                  child: Text(
+                    'Step ${_step + 1} of 3',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (_message != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Semantics(liveRegion: true, child: Text(_message!)),
-            ),
-          if (widget.controller.error != null) ...[
-            WorkspaceError(
-              message: widget.controller.error!,
-              onDismiss: widget.controller.clearError,
-            ),
+              const SizedBox(height: 12),
+            ],
+            if (_message != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Semantics(liveRegion: true, child: Text(_message!)),
+              ),
+            if (widget.controller.error != null) ...[
+              WorkspaceError(
+                message: widget.controller.error!,
+                onDismiss: widget.controller.clearError,
+              ),
+              TextButton(
+                onPressed: _disabled ? null : _reload,
+                child: const Text('Reload and discard draft'),
+              ),
+            ],
+            if (_step == 0)
+              _assessment()
+            else if (_step == 1)
+              _features()
+            else if (_step == 2)
+              _review()
+            else
+              _settings(),
             TextButton(
-              onPressed: _disabled ? null : _reload,
-              child: const Text('Reload and discard draft'),
+              onPressed: _disabled ? null : _cancel,
+              child: const Text('Cancel'),
             ),
-          ],
-          if (_step == 0)
-            _assessment()
-          else if (_step == 1)
-            _features()
-          else if (_step == 2)
-            _review()
-          else
-            _settings(),
-          TextButton(
-            onPressed: _disabled ? null : _cancel,
-            child: const Text('Cancel'),
-          ),
           ],
         ),
       ),

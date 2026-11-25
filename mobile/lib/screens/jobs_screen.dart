@@ -1,4 +1,11 @@
+import 'dart:async';
+
+import '../widgets/voice_guidance.dart';
+import 'fsl_section_guide.dart';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/career_preview.dart';
 import '../models/seeker_workspace.dart';
@@ -6,14 +13,19 @@ import '../widgets/workspace_widgets.dart';
 
 class JobsScreen extends StatefulWidget {
   const JobsScreen({required this.preview, required this.onOpen, super.key})
-    : loadJobs = null,
+    : startWithVoice = false,
+      focusSearch = false,
+      loadJobs = null,
       onAccessLost = null;
   const JobsScreen.authenticated({
+    this.startWithVoice = false,
+    this.focusSearch = false,
     required this.loadJobs,
     required this.onOpen,
     required this.onAccessLost,
     super.key,
   }) : preview = null;
+  final bool startWithVoice, focusSearch;
   final CareerPreview? preview;
   final Future<List<JobListing>> Function()? loadJobs;
   final VoidCallback? onAccessLost;
@@ -24,6 +36,77 @@ class JobsScreen extends StatefulWidget {
 
 class _JobsScreenState extends State<JobsScreen> {
   final _search = TextEditingController();
+  static const _voice = MethodChannel('enablework_plus/voice_search');
+  bool _listening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.startWithVoice) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _voiceSearch();
+      });
+    }
+  }
+
+  Future<void> _voiceSearch() async {
+    if (_listening) return;
+    setState(() => _listening = true);
+    String? message;
+    try {
+      final words = (await _voice.invokeMethod<String>('listen'))?.trim();
+      if (!mounted || words == null) return;
+      if (words.isEmpty) {
+        message = 'No words recognized. Try again or type your search.';
+      } else {
+        _search.value = TextEditingValue(
+          text: words,
+          selection: TextSelection.collapsed(offset: words.length),
+        );
+        _announceResults();
+      }
+    } on PlatformException {
+      message = 'Voice input unavailable. You can type your search.';
+    } on MissingPluginException {
+      message = 'Voice input unavailable. You can type your search.';
+    } finally {
+      if (mounted) {
+        setState(() => _listening = false);
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
+      }
+    }
+  }
+
+  Timer? _feedback;
+  void _announceResults() {
+    _feedback?.cancel();
+    if (!VoiceScope.of(context)) return;
+    _feedback = Timer(const Duration(milliseconds: 650), () async {
+      List<JobListing> jobs;
+      try {
+        jobs = await _request;
+      } catch (_) {
+        return; // The list already exposes its retry state.
+      }
+      if (!mounted ||
+          !VoiceScope.of(context) ||
+          ModalRoute.of(context)?.isCurrent != true ||
+          !TickerMode.valuesOf(context).enabled) {
+        return;
+      }
+      final count = jobs.where((j) => j.matches(_search.text, _work)).length;
+      final filter = workArrangementLabels[_work] ?? 'All work arrangements';
+      await speakVoice(
+        context,
+        '$filter. $count matching openings.',
+        automatic: true,
+      );
+    });
+  }
+
   String? _work;
   bool _showFilters = false;
   late Future<List<JobListing>> _request = _load();
@@ -39,6 +122,7 @@ class _JobsScreenState extends State<JobsScreen> {
 
   @override
   void dispose() {
+    _feedback?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -55,6 +139,7 @@ class _JobsScreenState extends State<JobsScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             const CareerHeading('Find a job'),
+            const FslSectionGuide(GuideSection.jobs),
             SectionCard(
               title: 'Jobs could not be loaded',
               children: [
@@ -78,6 +163,7 @@ class _JobsScreenState extends State<JobsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         const CareerHeading('Find a job'),
+        const FslSectionGuide(GuideSection.jobs),
         if (widget.loadJobs != null)
           Align(
             alignment: Alignment.centerLeft,
@@ -91,14 +177,26 @@ class _JobsScreenState extends State<JobsScreen> {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
+              autofocus: widget.focusSearch,
               controller: _search,
               textInputAction: TextInputAction.search,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Search jobs',
-                hintText: 'Title, company or city',
-                prefixIcon: Icon(Icons.search),
+                hintText: 'Title, company, city or skill',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon:
+                    !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+                    ? IconButton(
+                        tooltip: 'Search jobs by voice',
+                        icon: const Icon(Icons.mic),
+                        onPressed: _listening ? null : _voiceSearch,
+                      )
+                    : null,
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                setState(() {});
+                _announceResults();
+              },
             ),
           ),
         ),
@@ -125,34 +223,43 @@ class _JobsScreenState extends State<JobsScreen> {
                 ChoiceChip(
                   label: Text(option.value),
                   selected: _work == option.key,
-                  onSelected: (_) => setState(() => _work = option.key),
+                  onSelected: (_) {
+                    setState(() => _work = option.key);
+                    _announceResults();
+                  },
                 ),
             ],
           ),
         if (matches.isEmpty)
-          SectionCard(
-            title: jobs.isEmpty ? 'No open jobs yet' : 'No matching jobs',
-            children: [
-              Text(
-                jobs.isEmpty
-                    ? 'Published opportunities will appear here when available.'
-                    : 'Try a different search or work arrangement.',
-              ),
-              TextButton(
-                onPressed: () => setState(() {
-                  _search.clear();
-                  _work = null;
-                }),
-                child: const Text('Clear search and filters'),
-              ),
-            ],
+          Semantics(
+            liveRegion: true,
+            child: SectionCard(
+              title: jobs.isEmpty ? 'No open jobs yet' : 'No matching jobs',
+              children: [
+                Text(
+                  jobs.isEmpty
+                      ? 'Published opportunities will appear here when available.'
+                      : 'Try a different search or work arrangement.',
+                ),
+                TextButton(
+                  onPressed: () => setState(() {
+                    _search.clear();
+                    _work = null;
+                  }),
+                  child: const Text('Clear search and filters'),
+                ),
+              ],
+            ),
           )
         else ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              '${matches.length} ${matches.length == 1 ? 'opening' : 'openings'}',
-              style: Theme.of(context).textTheme.labelLarge,
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                '${matches.length} ${matches.length == 1 ? 'opening' : 'openings'}',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
             ),
           ),
           for (final job in matches)
@@ -175,8 +282,15 @@ class _JobsScreenState extends State<JobsScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    onPressed: () => widget.onOpen(job),
-                    label: const Text('View job'),
+                    onPressed: () {
+                      _feedback?.cancel();
+                      widget.onOpen(job);
+                    },
+                    label: Text(
+                      'View job',
+                      semanticsLabel:
+                          'View job: ${job.title} at ${job.company}',
+                    ),
                     icon: const Icon(Icons.arrow_forward),
                   ),
                 ),
@@ -205,6 +319,27 @@ class JobDetails extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     children: [
       CareerHeading(job.title),
+      if (androidVoice)
+        VoiceActions(
+          'Read job details aloud',
+          [
+            job.title,
+            job.company,
+            job.city,
+            workArrangementLabels[job.arrangement] ?? job.arrangement,
+            jobTypeLabels[job.employment] ?? job.employment,
+            job.description,
+            if (job.qualifications.isNotEmpty)
+              'Qualifications: ${job.qualifications}',
+            if (job.requiredSkills.isNotEmpty)
+              'Required skills: ${job.requiredSkills.join(', ')}',
+            if (job.accessibility.isNotEmpty)
+              'Workplace accessibility: ${job.accessibility.join('. ')}',
+            if (job.deadline != null)
+              'Apply before ${MaterialLocalizations.of(context).formatFullDate(job.deadline!.toLocal())}',
+          ].where((s) => s.trim().isNotEmpty).join('. '),
+        ),
+      const FslSectionGuide(GuideSection.job),
       Text(job.company, style: Theme.of(context).textTheme.titleLarge),
       Text(
         '${job.city} · ${workArrangementLabels[job.arrangement]} · ${jobTypeLabels[job.employment]}',
@@ -239,12 +374,20 @@ class JobDetails extends StatelessWidget {
       ),
       if (onMatch != null)
         OutlinedButton.icon(
-          onPressed: onMatch,
+          onPressed: () {
+            stopVoice();
+            onMatch!();
+          },
           icon: const Icon(Icons.auto_awesome_outlined),
           label: const Text('Check job fit'),
         ),
       FilledButton(
-        onPressed: applied || !job.acceptingApplications ? null : onReview,
+        onPressed: applied || !job.acceptingApplications
+            ? null
+            : () {
+                stopVoice();
+                onReview();
+              },
         child: Text(
           applied
               ? 'Application recorded'
@@ -300,6 +443,7 @@ class _ApplicationReviewState extends State<ApplicationReview> {
       padding: const EdgeInsets.all(16),
       children: [
         const CareerHeading('Review application'),
+        const FslSectionGuide(GuideSection.review),
         SectionCard(
           title: widget.job.title,
           children: [Text(widget.job.company), Text(widget.job.city)],
@@ -339,7 +483,8 @@ class _ApplicationReviewState extends State<ApplicationReview> {
               ? 'Your selected resume will be attached to your application for administrator review.'
               : 'This application is saved for this session only and will not be sent to an employer.',
         ),
-        if (widget.message != null) Text(widget.message!),
+        if (widget.message != null)
+          Semantics(liveRegion: true, child: Text(widget.message!)),
         if (widget.busy) const BusyIndicator(label: 'Checking application'),
         if (widget.uncertain)
           OutlinedButton(

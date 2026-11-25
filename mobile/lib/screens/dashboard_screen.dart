@@ -1,8 +1,11 @@
+import 'fsl_section_guide.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/career_preview.dart';
 import '../models/seeker_workspace.dart';
 import '../widgets/workspace_widgets.dart';
+import '../widgets/welcome_guide.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
@@ -10,10 +13,14 @@ class DashboardScreen extends StatelessWidget {
     required this.openTab,
     required this.openResumes,
     required this.openJob,
+    this.startSearch,
+    this.openSignSupport,
     this.demoJobs,
     super.key,
   });
   const DashboardScreen.authenticated({
+    this.startSearch,
+    this.openSignSupport,
     required this.data,
     required this.openTab,
     required this.openResumes,
@@ -21,6 +28,8 @@ class DashboardScreen extends StatelessWidget {
   }) : demoJobs = null,
        openJob = null;
 
+  final VoidCallback? openSignSupport;
+  final void Function(bool voice)? startSearch;
   final SeekerWorkspace data;
   final VoidCallback openResumes;
   final ValueChanged<int> openTab;
@@ -34,14 +43,8 @@ class DashboardScreen extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final fullName = (data.profile.fields['full_name'] ?? '').trim();
     final firstName = fullName.isEmpty
-        ? 'there'
+        ? ''
         : fullName.split(RegExp(r'\s+')).first;
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good morning'
-        : hour < 18
-        ? 'Good afternoon'
-        : 'Good evening';
     final applicationOverview = <Widget>[
       const _Heading('Application overview'),
       SectionCard(
@@ -75,30 +78,83 @@ class DashboardScreen extends StatelessWidget {
         ],
       ),
     ];
+    final accessibilityActions = <Widget>[
+      if (openSignSupport != null &&
+          data.preferences.accessibilityNeeds.any(
+            const {'hearing', 'speech'}.contains,
+          ))
+        FilledButton.icon(
+          onPressed: openSignSupport,
+          icon: const Icon(Icons.sign_language_outlined),
+          label: const Text('Filipino Sign Language'),
+        ),
+      if (startSearch != null &&
+          data.preferences.accessibilityNeeds.any(
+            const {'visual', 'mobility'}.contains,
+          ) &&
+          !kIsWeb &&
+          defaultTargetPlatform == TargetPlatform.android)
+        FilledButton.icon(
+          onPressed: () => startSearch!(true),
+          icon: const Icon(Icons.mic),
+          label: const Text('Search jobs by voice'),
+        ),
+      if (startSearch != null &&
+          data.preferences.accessibilityNeeds.any(
+            const {'hearing', 'speech'}.contains,
+          ))
+        OutlinedButton.icon(
+          onPressed: () => startSearch!(false),
+          icon: const Icon(Icons.keyboard),
+          label: const Text('Type a job search'),
+        ),
+      if (data.preferences.accessibilityNeeds.any(
+        const {'learning', 'intellectual', 'psychosocial'}.contains,
+      ))
+        SectionCard(
+          title: 'One step at a time',
+          children: [
+            const Text(
+              'Start with a job title. Open one listing to read what the employer needs.',
+            ),
+            TextButton(
+              onPressed: () => openTab(1),
+              child: const Text('Browse jobs'),
+            ),
+          ],
+        ),
+    ];
     return ListView(
       key: const PageStorageKey('seeker-dashboard'),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        CareerHeading('$greeting, $firstName'),
-        Text(
-          'Your next opportunity starts here.',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        WelcomeGuide(name: firstName),
+        const FslSectionGuide(GuideSection.home),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: () => openTab(1),
+          onPressed: () =>
+              startSearch != null ? startSearch!(false) : openTab(1),
           icon: const Icon(Icons.search),
           label: const Text('Search jobs, companies or skills'),
           style: FilledButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xff14213d),
-            iconColor: const Color(0xff0038a8),
+            backgroundColor: colors.surface,
+            foregroundColor: colors.onSurface,
+            iconColor: colors.primary,
             side: BorderSide.none,
             alignment: Alignment.centerLeft,
             minimumSize: const Size.fromHeight(56),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
+
+        if (accessibilityActions.isNotEmpty) ...[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 20,
+            children: accessibilityActions,
+          ),
+          const SizedBox(height: 24),
+        ],
         _ProfileCard(
           data: data,
           authenticated: jobs == null,
@@ -110,10 +166,10 @@ class DashboardScreen extends StatelessWidget {
             final twoColumns =
                 box.maxWidth >= 320 &&
                 MediaQuery.textScalerOf(context).scale(14) <= 20;
-            final width = twoColumns ? (box.maxWidth - 10) / 2 : box.maxWidth;
+            final width = twoColumns ? (box.maxWidth - 16) / 2 : box.maxWidth;
             return Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 16,
+              runSpacing: 16,
               children: [
                 for (final (icon, label, action)
                     in <(IconData, String, VoidCallback)>[
@@ -315,7 +371,7 @@ class _ProfileCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Wrap(
-                  spacing: 12,
+                  spacing: 20,
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [

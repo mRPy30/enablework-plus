@@ -37,6 +37,23 @@ class RecordingBackend implements ResumeBackend {
 }
 
 void main() {
+  test('picker return can upload while an older workspace refresh finishes', () async {
+    final repo = FakeRepository();
+    final controller = SeekerController(repo, onPreferences: (_) {}, onAccessLost: () {});
+    addTearDown(controller.dispose);
+    await controller.load();
+    final previous = repo.value;
+    final gate = Completer<SeekerWorkspace>();
+    repo.pendingLoad = gate;
+    final refresh = controller.load();
+    repo.pendingLoad = null;
+    expect(await controller.upload('Test PDF', dummyPdf()), isTrue);
+    gate.complete(previous);
+    await refresh;
+    expect(repo.uploads, 1);
+    expect(controller.data!.resumes.single.title, 'Test PDF');
+    expect(controller.loading, isFalse);
+  });
   test('profile payload contains no authority or owner fields', () {
     final value = SeekerProfile(
       userId: 'dummy',

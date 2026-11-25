@@ -1,3 +1,4 @@
+import 'fsl_section_guide.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -13,9 +14,11 @@ class AuthScreen extends StatefulWidget {
   const AuthScreen({
     required this.service,
     this.authenticatedBuilder,
+    this.onDisplay,
     super.key,
   });
   final AuthService service;
+  final VoidCallback? onDisplay;
   final Widget Function(BuildContext, VoidCallback)? authenticatedBuilder;
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -184,6 +187,7 @@ class _AuthScreenState extends State<AuthScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const BrandIdentity(),
+        const FslSectionGuide(GuideSection.account),
                 const SizedBox(height: 12),
                 Text(
                   _recovering

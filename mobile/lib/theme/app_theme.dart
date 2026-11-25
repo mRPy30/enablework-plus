@@ -41,6 +41,7 @@ abstract final class AppTheme {
     Brightness brightness, {
     bool highContrast = false,
     bool reduceMotion = false,
+    bool largerControls = false,
   }) {
     final dark = brightness == Brightness.dark;
     final scheme =
@@ -66,7 +67,7 @@ abstract final class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surfaceContainerLow,
       materialTapTargetSize: MaterialTapTargetSize.padded,
-      visualDensity: VisualDensity.standard,
+      visualDensity: largerControls ? const VisualDensity(horizontal: 3, vertical: 4) : VisualDensity.standard,
       splashFactory: reduceMotion
           ? NoSplash.splashFactory
           : InkRipple.splashFactory,

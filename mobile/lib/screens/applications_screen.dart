@@ -1,3 +1,4 @@
+import 'fsl_section_guide.dart';
 import 'package:flutter/material.dart';
 
 import '../models/career_preview.dart';
@@ -58,6 +59,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     padding: const EdgeInsets.all(16),
     children: [
       const CareerHeading('Your applications'),
+        const FslSectionGuide(GuideSection.applications),
       if (widget.loadApplications != null)
         Align(
           alignment: Alignment.centerLeft,
@@ -172,6 +174,7 @@ class ApplicationDetails extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     children: [
       const CareerHeading('Application details'),
+        const FslSectionGuide(GuideSection.details),
       SectionCard(
         title: application.job.title,
         children: [
